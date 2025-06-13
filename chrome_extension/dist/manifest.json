@@ -1,0 +1,11 @@
+{
+  "resources/js/extension.ts": {
+    "file": "assets/extension.js",
+    "name": "extension",
+    "src": "resources/js/extension.ts",
+    "isEntry": true,
+    "css": [
+      "assets/extension.css"
+    ]
+  }
+}

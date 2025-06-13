@@ -1,11 +1,11 @@
 {
     "manifest_version": 3,
-    "name": "Your Laravel App Extension",
+    "name": "Clario",
     "version": "1.0.0",
-    "description": "Chrome extension for your Laravel application",
+    "description": "Clario",
     "permissions": ["sidePanel", "storage", "activeTab"],
     "action": {
-        "default_title": "Open Side Panel",
+        "default_title": "Clario",
         "default_icon": {
             "16": "icon-16.png",
             "48": "icon-48.png",
@@ -22,5 +22,11 @@
     },
     "background": {
         "service_worker": "background.js"
-    }
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"]
+        }
+    ]
 }

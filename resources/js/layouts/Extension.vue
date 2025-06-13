@@ -76,27 +76,7 @@
                         <p class="text-muted-foreground text-sm">A summary of the current page content</p>
                     </div>
                     <div class="space-y-4 p-6">
-                        <h4 class="text-base font-medium">The Future of Artificial Intelligence in Web Development</h4>
-
-                        <p class="text-sm">
-                            This article explores how artificial intelligence is transforming web development practices. It discusses the emergence of
-                            AI-powered tools that can generate code, optimize performance, and enhance user experiences.
-                        </p>
-
-                        <p class="text-sm">Key points covered include:</p>
-
-                        <ul class="list-disc space-y-1 pl-5 text-sm">
-                            <li>AI-assisted code generation and its impact on developer productivity</li>
-                            <li>Machine learning algorithms for optimizing website performance</li>
-                            <li>Personalization capabilities through AI-driven user behavior analysis</li>
-                            <li>Ethical considerations when implementing AI in web applications</li>
-                            <li>Future trends in AI and web development integration</li>
-                        </ul>
-
-                        <p class="text-sm">
-                            The article concludes with case studies of successful AI implementations in modern websites and provides recommendations
-                            for developers looking to incorporate AI into their workflow.
-                        </p>
+                        <PageContent />
                     </div>
                     <div class="flex items-center justify-between border-t p-4">
                         <div class="text-muted-foreground text-sm">Page tone analysis:</div>
@@ -166,6 +146,7 @@
 </template>
 
 <script lang="ts" setup>
+import PageContent from '@/components/PageContent.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
