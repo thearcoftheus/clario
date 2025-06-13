@@ -170,6 +170,7 @@
 
     body {
         @apply bg-background text-foreground;
+        font-size: 100% !important;
     }
 }
 
