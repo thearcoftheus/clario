@@ -40,3 +40,27 @@ function extractMainContent() {
 
     return mainElement.innerHTML;
 }
+
+function pageLoaded() {
+    chrome.runtime.sendMessage({
+        type: 'pageLoaded',
+        title: document.title,
+        url: location.href,
+        content: extractMainContent(),
+    });
+}
+
+pageLoaded();
+
+window.addEventListener('popstate', pageLoaded);
+window.addEventListener('pushstate', pageLoaded);
+window.addEventListener('replacestate', pageLoaded);
+
+['pushState', 'replaceState'].forEach(fn => {
+    const original = history[fn];
+    history[fn] = function () {
+        const result = original.apply(this, args);
+        window.dispatchEvent(new Event(fn.toLowerCase()));
+        return result;
+    };
+});

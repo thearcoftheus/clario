@@ -4,34 +4,47 @@
             <h3 class="text-lg leading-none font-semibold tracking-tight">Browsing History</h3>
             <p class="text-muted-foreground text-sm">Your recent browsing history</p>
         </div>
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Date</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                <TableRow v-for="(item, index) in historyItems" :key="index">
-                    <TableCell>{{ item.name }}</TableCell>
-                    <TableCell>{{ item.date }}</TableCell>
-                </TableRow>
-            </TableBody>
-        </Table>
+        <div class="relative overflow-x-auto">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Url</TableHead>
+                        <TableHead>Content</TableHead>
+                        <TableHead class="bg-card sticky right-0 z-10"></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    <template v-if="historyItems.length">
+                        <TableRow v-for="(item, index) in historyItems" :key="index" :class="{ 'font-bold': index === 0 }">
+                            <TableCell>{{ item.formattedDate }}</TableCell>
+                            <TableCell>{{ item.name }}</TableCell>
+                            <TableCell>{{ item.url }}</TableCell>
+                            <TableCell>{{ item.content.substring(0, 100) }}...</TableCell>
+                            <TableCell class="bg-card sticky right-0 z-10">
+                                <button @click="historyStore.remove(item)">
+                                    <Trash2 class="h-5 w-5" />
+                                </button>
+                            </TableCell>
+                        </TableRow>
+                    </template>
+                    <TableRow v-else>
+                        <TableCell colspan="5" class="py-4 text-center italic">No items</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        </div>
     </div>
 </template>
 
 <script lang="ts" setup>
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useHistoryStore } from '@/stores/historyStore';
+import { Trash2 } from 'lucide-vue-next';
+import { storeToRefs } from 'pinia';
 
-const historyItems = [
-    { name: 'Getting Started with Vue.js', date: 'Today, 10:30 AM' },
-    { name: 'The Ultimate Guide to Tailwind CSS', date: 'Today, 9:15 AM' },
-    { name: 'Building Chrome Extensions with Vue', date: 'Yesterday, 4:45 PM' },
-    { name: 'Modern JavaScript Techniques', date: 'Yesterday, 2:20 PM' },
-    { name: 'How to Create Responsive Layouts', date: 'May 15, 2023, 11:05 AM' },
-    { name: 'Understanding Web Components', date: 'May 14, 2023, 3:30 PM' },
-    { name: 'The Future of Web Development', date: 'May 12, 2023, 9:45 AM' },
-    { name: 'Mastering TypeScript', date: 'May 10, 2023, 1:15 PM' },
-];
+const historyStore = useHistoryStore();
+
+const { historyItems } = storeToRefs(historyStore);
 </script>
