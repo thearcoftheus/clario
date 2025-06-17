@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { extractContent } from '@/functions/extractContent';
 import { useStream } from '@laravel/stream-vue';
 
-const { data, isStreaming, isFetching, send } = useStream('https://arc-extension.ddev.site/api/translate');
+const { data, isStreaming, isFetching, send } = useStream(route('translate'));
 
 function onButtonClick() {
     extractContent().then(content => {

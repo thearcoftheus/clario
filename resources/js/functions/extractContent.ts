@@ -17,7 +17,6 @@ export async function extractContent(): Promise<string> {
                 }
 
                 if (response && response.content) {
-                    console.log(response.content);
                     resolve(response.content);
                 } else {
                     console.error('No content could be extracted.');

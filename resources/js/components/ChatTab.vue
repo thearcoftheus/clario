@@ -46,7 +46,7 @@ interface ChatMessage {
 
 const chatMessages = ref<ChatMessage[]>([{ sender: 'assistant', text: 'Hello! How can I help you today?' }]);
 
-const { data, isStreaming, isFetching, send } = useStream('https://arc-extension.ddev.site/api/chat');
+const { data, isStreaming, isFetching, send } = useStream(route('chat'));
 
 const sendMessage = async () => {
     if (!newMessage.value.trim()) return;

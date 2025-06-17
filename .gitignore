@@ -22,3 +22,6 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+/resources/js/ziggy.js
+/resources/js/ziggy.d.ts
+/chrome_extension/dist

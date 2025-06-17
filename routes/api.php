@@ -11,6 +11,8 @@ Route::get('/user', function(Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+Route::get('/test/{id}', function() {})->name('test');
+
 Route::post('/translate', function(Request $request, TextSimplificationService $textSimplifier) {
 
     $content = $request->input('content', '');
@@ -31,7 +33,7 @@ Route::post('/translate', function(Request $request, TextSimplificationService $
         'X-Accel-Buffering' => 'no',
         'Connection' => 'keep-alive',
     ]);
-});
+})->name('translate');
 
 Route::post('/chat', function(Request $request, ChatService $chatService) {
 
@@ -74,4 +76,4 @@ Route::post('/chat', function(Request $request, ChatService $chatService) {
         'X-Accel-Buffering' => 'no',
         'Connection' => 'keep-alive',
     ]);
-});
+})->name('chat');
