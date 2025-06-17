@@ -7,6 +7,10 @@
         <div class="flex-1 space-y-4 overflow-auto p-4" ref="chatContainer">
             <div v-for="(message, index) in chatMessages" :key="index" :class="['flex', message.sender === 'user' ? 'justify-end' : 'justify-start']">
                 <div :class="['max-w-[90%] rounded-lg px-4 py-2', message.sender === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted']">
+                    <div
+                        v-if="message.sender === 'assistant' && message.text === '' && isFetching"
+                        class="h-5 w-5 animate-spin rounded-full border-2 border-solid border-gray-900 border-t-transparent"
+                    />
                     <Markdown :content="message.text" />
                 </div>
             </div>
