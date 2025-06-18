@@ -4,7 +4,7 @@
             <h3 class="text-lg leading-none font-semibold tracking-tight">Web Page Summary</h3>
             <p class="text-muted-foreground text-sm">A summary of the current page content</p>
         </div>
-        <div class="space-y-4 p-6">
+        <div class="p-6">
             <SimplifiedContent />
         </div>
         <div class="flex items-center justify-between border-t p-4">

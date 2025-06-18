@@ -1,29 +1,18 @@
 <template>
-    <div class="flex justify-center">
-        <Button @click="onButtonClick" :disabled="isStreaming || isFetching">
-            Simplify
-            <div v-if="isStreaming || isFetching" class="h-5 w-5 animate-spin rounded-full border-2 border-solid border-white border-t-transparent" />
-        </Button>
-    </div>
-
-    <Markdown :content="data" />
+    <div v-if="historyItems.length === 0" class="py-8 text-center italic accent-gray-700">Refresh page to see summary</div>
+    <template v-else>
+        <div v-if="historyItems[0].isFetching" class="flex justify-center py-8">
+            <div class="h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-t-transparent" />
+        </div>
+        <Markdown :content="historyItems[0].simplifiedContent" />
+    </template>
 </template>
 
 <script lang="ts" setup>
 import Markdown from '@/components/Markdown.vue';
-import { Button } from '@/components/ui/button';
-import { extractContent } from '@/functions/extractContent';
-import { useStream } from '@laravel/stream-vue';
+import { useHistoryStore } from '@/stores/historyStore';
+import { storeToRefs } from 'pinia';
 
-const { data, isStreaming, isFetching, send } = useStream(route('translate'));
-
-function onButtonClick() {
-    extractContent().then(content => {
-        send({
-            content,
-        });
-    });
-}
+const historyStore = useHistoryStore();
+const { historyItems } = storeToRefs(historyStore);
 </script>
-
-<style lang="scss"></style>

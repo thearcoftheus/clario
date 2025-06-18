@@ -37,6 +37,14 @@ const markdownContent = computed(() => {
         margin-top: 1em;
         margin-bottom: 0.5em;
         font-weight: bold;
+
+        &:first-child {
+            margin-top: 0;
+        }
+
+        &:last-child {
+            margin-bottom: 0;
+        }
     }
 
     h1 {

@@ -9,11 +9,14 @@ export type HistoryItem = {
     name: string;
     url: string;
     content: string;
+    simplifiedContent: string;
+    isStreaming: boolean;
+    isFetching: boolean;
     date: Dayjs;
     formattedDate: string;
 };
 
-export type NewHistoryItem = Omit<HistoryItem, 'date' | 'formattedDate'>;
+export type NewHistoryItem = Pick<HistoryItem, 'name' | 'url' | 'content'>;
 
 export const useHistoryStore = defineStore('store', function () {
     const historyItems = ref<HistoryItem[]>([]);
@@ -23,6 +26,9 @@ export const useHistoryStore = defineStore('store', function () {
 
         historyItems.value.unshift({
             ...item,
+            simplifiedContent: '',
+            isStreaming: false,
+            isFetching: false,
             date: dayjs(),
             formattedDate: dayjs().fromNow(),
         });
