@@ -24,7 +24,13 @@
             </div>
             <div class="border-t p-4">
                 <form @submit.prevent="sendMessage" class="flex space-x-2">
-                    <Input v-model="newMessage" placeholder="Type your message..." class="flex-1" :disabled="isFetching || isStreaming" />
+                    <Input
+                        v-model="newMessage"
+                        placeholder="Type your message..."
+                        class="flex-1"
+                        :disabled="isFetching || isStreaming"
+                        ref="textInput"
+                    />
                     <Button type="submit" size="icon" :disabled="isFetching || isStreaming">
                         <SendIcon class="h-4 w-4" />
                     </Button>
@@ -52,30 +58,40 @@ const { chatMessages, isFetching, isStreaming } = storeToRefs(chatStore);
 
 const newMessage = ref('');
 const chatContainer = ref<HTMLElement>();
+const textInput = ref();
 
-const sendMessage = async () => {
+function focusTextInput() {
+    const inputElement = textInput.value?.$el as HTMLInputElement;
+    inputElement?.focus();
+}
+
+function scrollToBottom() {
+    if (chatContainer.value) {
+        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    }
+}
+
+async function sendMessage() {
     chatStore.addUserMessage(newMessage.value);
     newMessage.value = '';
 
     await nextTick();
-    if (chatContainer.value) {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-    }
-};
+    scrollToBottom();
+}
 
 watch(isStreaming, () => {
-    if (!isStreaming) {
+    if (!isStreaming.value) {
         nextTick(() => {
-            if (chatContainer.value) {
-                chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-            }
+            scrollToBottom();
+            focusTextInput();
         });
     }
 });
 
-onMounted(() => {
-    if (chatContainer.value) {
-        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-    }
+onMounted(async () => {
+    scrollToBottom();
+    setTimeout(() => {
+        focusTextInput();
+    }, 50);
 });
 </script>
