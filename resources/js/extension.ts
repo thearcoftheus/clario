@@ -10,7 +10,7 @@ import { route, ZiggyVue } from 'ziggy-js';
 window.Ziggy = Ziggy;
 window.route = route;
 
-fetch('https://arc-extension.ddev.site/sanctum/csrf-cookie', {
+fetch(route('sanctum.csrf-cookie'), {
     credentials: 'include',
 });
 
