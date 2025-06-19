@@ -25,3 +25,6 @@ yarn-error.log
 /resources/js/ziggy.js
 /resources/js/ziggy.d.ts
 /chrome_extension/dist
+/chrome_extension/icon-16.png
+/chrome_extension/icon-48.png
+/chrome_extension/icon-128.png
