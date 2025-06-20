@@ -19,7 +19,7 @@ PROMPT;
 
     protected function simplifyText(string $text): PendingRequest {
         return Prism::text()
-            ->using(Provider::Gemini, 'gemini-2.5-flash')
+            ->using(Provider::Gemini, 'gemini-2.5-flash-lite-preview-06-17')
             ->withMaxTokens(8000)
             ->withSystemPrompt(self::SYSTEM_PROMPT)
             ->withPrompt($text);

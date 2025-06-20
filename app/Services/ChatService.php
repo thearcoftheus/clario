@@ -32,7 +32,7 @@ PROMPT;
      */
     protected function chat(string $context, array $messages): PendingRequest {
         return Prism::text()
-            ->using(Provider::Gemini, 'gemini-2.5-flash')
+            ->using(Provider::Gemini, 'gemini-2.5-flash-lite-preview-06-17')
             ->withMaxTokens(8000)
             ->withSystemPrompt(self::SYSTEM_PROMPT . "\n\n" . $context)
             ->withMessages($messages);

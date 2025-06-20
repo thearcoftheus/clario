@@ -23,7 +23,7 @@ Route::post('/translate', function(Request $request, TextSimplificationService $
 
     return response()->stream(function() use ($response) {
         foreach($response as $chunk){
-            if($chunk->finishReason) break;
+//            if($chunk->finishReason) break;
             yield $chunk->text;
         }
     }, 200, [
@@ -66,7 +66,7 @@ Route::post('/chat', function(Request $request, ChatService $chatService) {
 
     return response()->stream(function() use ($response) {
         foreach($response as $chunk){
-            if($chunk->finishReason) break;
+//            if($chunk->finishReason) break;
             yield $chunk->text;
         }
     }, 200, [
