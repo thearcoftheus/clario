@@ -32,7 +32,9 @@ function extractMainContent() {
         const clone = mainElement.cloneNode(true);
 
         // Remove common non-content elements
-        const elementsToRemove = clone.querySelectorAll('header, footer, nav, aside, .sidebar, #sidebar, .ad, .ads, .advertisement');
+        const elementsToRemove = clone.querySelectorAll(
+            'header, footer, nav, aside, .sidebar, #sidebar, .ad, .ads, .advertisement, script, noscript, iframe, hr',
+        );
         elementsToRemove.forEach(el => el.remove());
 
         return clone.innerHTML;
