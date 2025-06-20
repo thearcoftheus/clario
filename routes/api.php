@@ -11,8 +11,6 @@ Route::get('/user', function(Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::get('/test/{id}', function() {})->name('test');
-
 Route::post('/translate', function(Request $request, TextSimplificationService $textSimplifier) {
 
     $content = $request->input('content', '');

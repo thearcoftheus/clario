@@ -19,7 +19,8 @@ PROMPT;
 
     protected function simplifyText(string $text): PendingRequest {
         return Prism::text()
-            ->using(Provider::Anthropic, 'claude-3-5-sonnet-20241022')
+            ->using(Provider::Gemini, 'gemini-2.5-flash')
+            ->withMaxTokens(8000)
             ->withSystemPrompt(self::SYSTEM_PROMPT)
             ->withPrompt($text);
     }

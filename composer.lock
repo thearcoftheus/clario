@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "43e8b2fe350f4b47f05948487794fbe1",
+    "content-hash": "eab2e6cb0d7d38ef19748e659629ccb2",
     "packages": [
         {
             "name": "brick/math",
@@ -2717,19 +2717,20 @@
         },
         {
             "name": "prism-php/prism",
-            "version": "v0.68.2",
+            "version": "v0.74.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/prism-php/prism.git",
-                "reference": "0207b0875e9d3bcf560ea424471e3c96126964e7"
+                "reference": "1450e24962241f7739ab31678b258402917f678a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/prism-php/prism/zipball/0207b0875e9d3bcf560ea424471e3c96126964e7",
-                "reference": "0207b0875e9d3bcf560ea424471e3c96126964e7",
+                "url": "https://api.github.com/repos/prism-php/prism/zipball/1450e24962241f7739ab31678b258402917f678a",
+                "reference": "1450e24962241f7739ab31678b258402917f678a",
                 "shasum": ""
             },
             "require": {
+                "ext-fileinfo": "*",
                 "laravel/framework": "^11.0|^12.0",
                 "php": "^8.2"
             },
@@ -2781,7 +2782,7 @@
             "description": "A powerful Laravel package for integrating Large Language Models (LLMs) into your applications.",
             "support": {
                 "issues": "https://github.com/prism-php/prism/issues",
-                "source": "https://github.com/prism-php/prism/tree/v0.68.2"
+                "source": "https://github.com/prism-php/prism/tree/v0.74.0"
             },
             "funding": [
                 {
@@ -2789,7 +2790,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2025-06-03T14:17:34+00:00"
+            "time": "2025-06-19T20:43:03+00:00"
         },
         {
             "name": "psr/clock",

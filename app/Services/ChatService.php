@@ -6,7 +6,6 @@ use Prism\Prism\Enums\Provider;
 use Prism\Prism\Prism;
 use Prism\Prism\Text\PendingRequest;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
-use Prism\Prism\ValueObjects\Messages\SystemMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 
 class ChatService {
@@ -19,6 +18,10 @@ When answering questions about the provided content:
 - Avoid technical terms, or explain them clearly when necessary
 - Be friendly and encouraging
 - Keep responses clear and direct
+
+--
+
+Here is the provided content:
 PROMPT;
 
 
@@ -29,11 +32,9 @@ PROMPT;
      */
     protected function chat(string $context, array $messages): PendingRequest {
         return Prism::text()
-            ->using(Provider::Anthropic, 'claude-3-5-sonnet-20241022')
-            ->withSystemPrompts([
-                new SystemMessage(self::SYSTEM_PROMPT),
-                new SystemMessage($context),
-            ])
+            ->using(Provider::Gemini, 'gemini-2.5-flash')
+            ->withMaxTokens(8000)
+            ->withSystemPrompt(self::SYSTEM_PROMPT . "\n\n" . $context)
             ->withMessages($messages);
     }
 
