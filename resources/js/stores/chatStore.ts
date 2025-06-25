@@ -1,4 +1,5 @@
 import { useHistoryStore } from '@/stores/historyStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { defineStore, storeToRefs } from 'pinia';
 import { ref } from 'vue';
 
@@ -15,6 +16,9 @@ export const useChatStore = defineStore('chatstore', function () {
 
     const historyStore = useHistoryStore();
     const { historyItems } = storeToRefs(historyStore);
+
+    const settingsStore = useSettingsStore();
+    const { settings } = storeToRefs(settingsStore);
 
     const isFetching = ref(false);
     const isStreaming = ref(false);
@@ -57,6 +61,7 @@ export const useChatStore = defineStore('chatstore', function () {
                 body: JSON.stringify({
                     content: historyItems.value[0].content,
                     messages: chatMessages.value.slice(0, -1),
+                    level: settings.value.simplificationLevel,
                 }),
                 signal: abortController.signal,
             });

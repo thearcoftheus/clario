@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\SimplificationLevel;
 use App\Services\ChatService;
 use App\Services\TextSimplificationService;
 use Illuminate\Http\Request;
@@ -14,12 +15,20 @@ Route::get('/user', function(Request $request) {
 Route::post('/translate', function(Request $request, TextSimplificationService $textSimplifier) {
 
     $content = $request->input('content', '');
+    $level = $request->input('level');
 
     if(empty($content)){
         return response()->json(['error' => 'No text provided'], 400);
     }
 
-    $response = $textSimplifier->simplifyAsStream($content);
+    if(!empty($level) && !SimplificationLevel::tryFrom($level)){
+        return response()->json(['error' => 'Invalid simplification level'], 400);
+    }
+
+    $response = $textSimplifier->simplifyAsStream(
+        $content,
+        SimplificationLevel::fromFallback($level)
+    );
 
     return response()->stream(function() use ($response) {
         foreach($response as $chunk){
@@ -37,6 +46,7 @@ Route::post('/chat', function(Request $request, ChatService $chatService) {
 
     $content = $request->input('content', '');
     $messages = $request->input('messages', []);
+    $level = $request->input('level');
 
     if(empty($content)){
         return response()->json(['error' => 'No content provided'], 400);
@@ -56,13 +66,21 @@ Route::post('/chat', function(Request $request, ChatService $chatService) {
         }
     }
 
+    if(!empty($level) && !SimplificationLevel::tryFrom($level)){
+        return response()->json(['error' => 'Invalid simplification level'], 400);
+    }
+
     $prismMessages = array_map(function($message) {
         return $message['sender'] === 'user'
             ? new UserMessage($message['text'])
             : new AssistantMessage($message['text']);
     }, $messages);
 
-    $response = $chatService->respondAsStream($content, $prismMessages);
+    $response = $chatService->respondAsStream(
+        $content,
+        $prismMessages,
+        SimplificationLevel::fromFallback($level),
+    );
 
     return response()->stream(function() use ($response) {
         foreach($response as $chunk){

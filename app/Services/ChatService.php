@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\SimplificationLevel;
 use Prism\Prism\Enums\Provider;
 use Prism\Prism\Prism;
 use Prism\Prism\Text\PendingRequest;
@@ -11,7 +12,6 @@ use Prism\Prism\ValueObjects\Messages\UserMessage;
 class ChatService {
 
     protected const SYSTEM_PROMPT = <<<PROMPT
-You are a helpful assistant that explains complex topics in simple terms for children in grades 2-3 (ages 7-9).
 When answering questions about the provided content:
 - Use basic vocabulary and short sentences
 - Break down complex ideas into simple concepts
@@ -30,12 +30,12 @@ PROMPT;
      * @param Array<AssistantMessage|UserMessage> $messages
      * @return PendingRequest
      */
-    protected function chat(string $context, array $messages): PendingRequest {
+    protected function chat(string $context, array $messages, SimplificationLevel $level): PendingRequest {
         return Prism::text()
             ->using(Provider::Gemini, 'gemini-2.5-flash')
             ->withMaxTokens(8000)
             ->withProviderOptions(['thinkingBudget' => 0])
-            ->withSystemPrompt(self::SYSTEM_PROMPT . "\n\n" . $context)
+            ->withSystemPrompt($level->getPrompt(self::SYSTEM_PROMPT . "\n\n" . $context))
             ->withMessages($messages);
     }
 
@@ -44,8 +44,8 @@ PROMPT;
      * @param Array<AssistantMessage|UserMessage> $messages
      * @return \Generator
      */
-    public function respondAsStream(string $context, array $messages): \Generator {
-        return $this->chat($context, $messages)->asStream();
+    public function respondAsStream(string $context, array $messages, SimplificationLevel $level): \Generator {
+        return $this->chat($context, $messages, $level)->asStream();
     }
 
     /**
@@ -53,8 +53,8 @@ PROMPT;
      * @param Array<AssistantMessage|UserMessage> $messages
      * @return string
      */
-    public function respondAsText(string $context, array $messages): string {
-        return $this->chat($context, $messages)->asText()->text;
+    public function respondAsText(string $context, array $messages, SimplificationLevel $level): string {
+        return $this->chat($context, $messages, $level)->asText()->text;
     }
 
 }
