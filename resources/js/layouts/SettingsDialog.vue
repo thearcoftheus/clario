@@ -1,5 +1,5 @@
 <template>
-    <Dialog>
+    <Dialog v-model:open="isOpen">
         <DialogTrigger as-child>
             <Button variant="ghost" size="icon" class="h-8 w-8">
                 <Settings class="h-5 w-5" />
@@ -8,61 +8,55 @@
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Settings</DialogTitle>
-                <DialogDescription> Adjust your extension settings here.</DialogDescription>
             </DialogHeader>
 
-            <div class="space-y-4 py-4">
-                <!-- Example settings -->
-                <div class="flex items-center justify-between">
-                    <div class="space-y-0.5">
-                        <Label htmlFor="dark-mode">Dark Mode</Label>
-                        <p class="text-muted-foreground text-sm">Enable dark mode for the extension</p>
+            <form @submit.prevent="onSubmit">
+                <div class="space-y-4 py-4">
+                    <div class="grid gap-2">
+                        <Label for="simplification_level">Simplification Level</Label>
+                        <Select id="simplification_level" v-model="formValues.simplificationLevel" required>
+                            <SelectTrigger>
+                                <SelectValue>
+                                    {{ settings.simplificationLevel }}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem v-for="level in SimplificationLevels" :key="level" :value="level">
+                                    {{ level }}
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <Checkbox id="dark-mode" />
                 </div>
 
-                <Separator />
-
-                <div class="flex items-center justify-between">
-                    <div class="space-y-0.5">
-                        <Label htmlFor="notifications">Notifications</Label>
-                        <p class="text-muted-foreground text-sm">Enable notifications from the extension</p>
-                    </div>
-                    <Checkbox id="notifications" />
-                </div>
-
-                <Separator />
-
-                <div class="space-y-2">
-                    <Label htmlFor="refresh-interval">Refresh Interval</Label>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger as-child>
-                            <Button variant="outline" id="refresh-interval" class="w-full justify-between">
-                                <span>5 minutes</span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent class="w-full min-w-[200px]">
-                            <DropdownMenuItem value="1">1 minute</DropdownMenuItem>
-                            <DropdownMenuItem value="5">5 minutes</DropdownMenuItem>
-                            <DropdownMenuItem value="15">15 minutes</DropdownMenuItem>
-                            <DropdownMenuItem value="30">30 minutes</DropdownMenuItem>
-                            <DropdownMenuItem value="60">1 hour</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            </div>
-
-            <DialogFooter>
-                <Button type="submit">Save changes</Button>
-            </DialogFooter>
+                <DialogFooter class="mt-4">
+                    <Button type="submit">Save changes</Button>
+                </DialogFooter>
+            </form>
         </DialogContent>
     </Dialog>
 </template>
 
 <script lang="ts" setup>
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { DropdownMenu } from '@/components/ui/dropdown-menu';
-import { Settings } from 'lucide-vue-next';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { SimplificationLevels, useSettingsStore } from '@/stores/settingsStore';
+import { CircleCheck, Settings } from 'lucide-vue-next';
+import { storeToRefs } from 'pinia';
+import { h, ref } from 'vue';
+import { toast } from 'vue-sonner';
+
+const isOpen = ref(false);
+
+const settingsStore = useSettingsStore();
+const { settings } = storeToRefs(settingsStore);
+
+const formValues = ref(settings.value);
+
+function onSubmit() {
+    settingsStore.updateSettings(formValues.value);
+    isOpen.value = false;
+    toast(h('div', { class: 'flex items-center gap-2' }, [h(CircleCheck), 'Settings saved successfully.']));
+}
 </script>
