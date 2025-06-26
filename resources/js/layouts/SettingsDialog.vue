@@ -13,8 +13,8 @@
             <form @submit.prevent="onSubmit">
                 <div class="space-y-4 py-4">
                     <div class="grid gap-2">
-                        <Label for="simplification_level">Simplification Level</Label>
-                        <Select id="simplification_level" v-model="formValues.simplificationLevel" required>
+                        <Label for="level">Level</Label>
+                        <Select id="level" v-model="formValues.simplificationLevel" required>
                             <SelectTrigger>
                                 <SelectValue>
                                     {{ settings.simplificationLevel }}

@@ -1,22 +1,21 @@
 <template>
-    <div class="bg-card text-card-foreground rounded-lg border shadow-sm">
-        <div class="border-b p-6">
-            <h3 class="text-lg leading-none font-semibold tracking-tight">Web Page Summary</h3>
-            <p class="text-muted-foreground text-sm">A summary of the current page content</p>
+    <StyledTab>
+        <div v-if="historyItems.length === 0" class="self-center py-8 text-center italic accent-gray-700">Refresh page to see summary</div>
+        <div v-else class="p-6">
+            <div v-if="historyItems[0].isFetching" class="flex justify-center py-8">
+                <div class="h-8 w-8 animate-spin rounded-full border-2 border-solid border-black border-t-transparent" />
+            </div>
+            <Markdown :content="historyItems[0].simplifiedContent" />
         </div>
-        <div class="p-6">
-            <SimplifiedContent />
-        </div>
-        <!--        <div class="flex items-center justify-between border-t p-4">-->
-        <!--            <div class="text-muted-foreground text-sm">Page tone analysis:</div>-->
-        <!--            <div class="flex items-center gap-2">-->
-        <!--                <ThumbsUp class="h-5 w-5 text-green-500" />-->
-        <!--                <span class="text-sm font-medium">Positive & Informative</span>-->
-        <!--            </div>-->
-        <!--        </div>-->
-    </div>
+    </StyledTab>
 </template>
 
 <script lang="ts" setup>
-import SimplifiedContent from '@/components/SimplifiedContent.vue';
+import Markdown from '@/components/Markdown.vue';
+import StyledTab from '@/components/ui/StyledTab.vue';
+import { useHistoryStore } from '@/stores/historyStore';
+import { storeToRefs } from 'pinia';
+
+const historyStore = useHistoryStore();
+const { historyItems } = storeToRefs(historyStore);
 </script>
