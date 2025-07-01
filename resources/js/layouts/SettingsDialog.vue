@@ -17,7 +17,7 @@
                         <Select id="level" v-model="formValues.simplificationLevel" required>
                             <SelectTrigger>
                                 <SelectValue>
-                                    {{ settings.simplificationLevel }}
+                                    {{ formValues.simplificationLevel }}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>

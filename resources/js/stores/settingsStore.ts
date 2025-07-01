@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
-export const SimplificationLevels = ['Grade 2-3', 'Grade 4-5'] as const;
+export const SimplificationLevels = ['Grade 2-3', 'Grade 7-8'] as const;
 
 export type SimplificationLevel = (typeof SimplificationLevels)[number];
 
