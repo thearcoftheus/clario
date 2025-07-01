@@ -18,6 +18,6 @@ watch(data, v => (item.simplifiedContent = v), { immediate: true });
 watch(isFetching, v => (item.isFetching = v), { immediate: true });
 watch(isStreaming, v => (item.isStreaming = v), { immediate: true });
 
-onMounted(() => send({ content: item.content, level: settings.value.simplificationLevel }));
+onMounted(() => send({ content: item.content, settings: settings.value }));
 onBeforeUnmount(() => cancel());
 </script>

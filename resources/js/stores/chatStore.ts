@@ -61,7 +61,7 @@ export const useChatStore = defineStore('chatstore', function () {
                 body: JSON.stringify({
                     content: historyItems.value[0].content,
                     messages: chatMessages.value.slice(0, -1),
-                    level: settings.value.simplificationLevel,
+                    settings: settings.value,
                 }),
                 signal: abortController.signal,
             });

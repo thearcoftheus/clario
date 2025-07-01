@@ -1,5 +1,5 @@
 <template>
-    <div class="grid h-[100dvh] grid-rows-[auto_1fr] gap-4 p-4">
+    <div class="grid h-dvh grid-rows-[auto_1fr] gap-4 p-4">
         <div class="mb-2 flex items-center justify-between">
             <h1 class="text-xl font-bold">Clario <span class="text-base font-normal">v0.2</span></h1>
             <SettingsDialog />

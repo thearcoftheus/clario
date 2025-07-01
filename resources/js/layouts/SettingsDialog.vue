@@ -13,7 +13,7 @@
             <form @submit.prevent="onSubmit">
                 <div class="space-y-4 py-4">
                     <div class="grid gap-2">
-                        <Label for="level">Level</Label>
+                        <Label for="level">Reading level</Label>
                         <Select id="level" v-model="formValues.simplificationLevel" required>
                             <SelectTrigger>
                                 <SelectValue>
@@ -27,6 +27,10 @@
                             </SelectContent>
                         </Select>
                     </div>
+                    <div class="flex items-center space-x-2">
+                        <Checkbox id="emoji" v-model="formValues.emoji" />
+                        <Label for="emoji">Use emoji?</Label>
+                    </div>
                 </div>
 
                 <DialogFooter class="mt-4">
@@ -39,6 +43,7 @@
 
 <script lang="ts" setup>
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { SimplificationLevels, useSettingsStore } from '@/stores/settingsStore';
