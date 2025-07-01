@@ -1,31 +1,9 @@
 import '../css/app.css';
 
-import ExtensionApp from '@/layouts/Extension.vue';
-import { useHistoryStore } from '@/stores/historyStore';
-import { Ziggy } from '@/ziggy';
-import { createPinia } from 'pinia';
-import { createApp } from 'vue';
-import { route, ZiggyVue } from 'ziggy-js';
+import './initZiggy';
 
-window.Ziggy = Ziggy;
-window.route = route;
+import './initCsrf';
 
-fetch(route('sanctum.csrf-cookie'), {
-    credentials: 'include',
-});
+import './initVue';
 
-const pinia = createPinia();
-
-createApp(ExtensionApp).use(ZiggyVue).use(pinia).mount('#app');
-
-const historyStore = useHistoryStore();
-
-chrome.runtime.onMessage.addListener(message => {
-    if (message.type === 'pageLoaded') {
-        historyStore.add({
-            name: message.title,
-            url: message.url,
-            content: message.content,
-        });
-    }
-});
+import './initChrome';

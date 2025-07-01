@@ -27,7 +27,6 @@ const markdownContent = computed(() => {
         }
     }
 
-    /* Basic markdown styling */
     h1,
     h2,
     h3,
@@ -124,6 +123,7 @@ const markdownContent = computed(() => {
     }
 
     pre {
+        container-type: inline-size;
         background-color: rgba(0, 0, 0, 0.05);
         padding: 1em;
         border-radius: 5px;

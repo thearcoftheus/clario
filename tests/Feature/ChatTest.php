@@ -10,49 +10,51 @@
  * 4. The endpoint returns a streaming response
  */
 
+use App\DTO\Settings;
 use App\Services\ChatService;
 use Mockery\MockInterface;
+use Prism\Prism\Text\PendingRequest;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 
 /**
- * Test that the chat endpoint returns a 400 error when no content is provided
+ * Test that the chat endpoint returns a 422 error when no content is provided
  *
  * This test verifies that the endpoint properly validates the 'content' parameter
  * and returns an appropriate error response when it's missing.
  */
-test('chat endpoint returns 400 when no content is provided', function () {
+test('chat endpoint returns 422 when no content is provided', function () {
     $response = $this->postJson('/api/chat', [
         'messages' => []
     ]);
 
-    $response->assertStatus(400)
-        ->assertJson(['error' => 'No content provided']);
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['content']);
 });
 
 /**
- * Test that the chat endpoint returns a 400 error when messages is not an array
+ * Test that the chat endpoint returns a 422 error when messages is not an array
  *
  * This test verifies that the endpoint properly validates the 'messages' parameter
  * and returns an appropriate error response when it's not an array.
  */
-test('chat endpoint returns 400 when messages is not an array', function () {
+test('chat endpoint returns 422 when messages is not an array', function () {
     $response = $this->postJson('/api/chat', [
         'content' => 'Some content',
         'messages' => 'not an array'
     ]);
 
-    $response->assertStatus(400)
-        ->assertJson(['error' => 'Messages must be an array']);
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['messages']);
 });
 
 /**
- * Test that the chat endpoint returns a 400 error when message sender is invalid
+ * Test that the chat endpoint returns a 422 error when message sender is invalid
  *
  * This test verifies that the endpoint properly validates the 'sender' field in each message
  * and returns an appropriate error response when it's not 'user' or 'assistant'.
  */
-test('chat endpoint returns 400 when message sender is invalid', function () {
+test('chat endpoint returns 422 when message sender is invalid', function () {
     $response = $this->postJson('/api/chat', [
         'content' => 'Some content',
         'messages' => [
@@ -63,17 +65,17 @@ test('chat endpoint returns 400 when message sender is invalid', function () {
         ]
     ]);
 
-    $response->assertStatus(400)
-        ->assertJson(['error' => 'Invalid message sender']);
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['messages.0.sender']);
 });
 
 /**
- * Test that the chat endpoint returns a 400 error when message text is empty
+ * Test that the chat endpoint returns a 422 error when message text is empty
  *
  * This test verifies that the endpoint properly validates the 'text' field in each message
  * and returns an appropriate error response when it's empty.
  */
-test('chat endpoint returns 400 when message text is empty', function () {
+test('chat endpoint returns 422 when message text is empty', function () {
     $response = $this->postJson('/api/chat', [
         'content' => 'Some content',
         'messages' => [
@@ -84,8 +86,8 @@ test('chat endpoint returns 400 when message text is empty', function () {
         ]
     ]);
 
-    $response->assertStatus(400)
-        ->assertJson(['error' => 'Message text is required']);
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['messages.0.text']);
 });
 
 /**
@@ -99,16 +101,22 @@ test('chat endpoint returns 400 when message text is empty', function () {
  * The test mocks the ChatService to avoid making actual API calls and to control the response.
  */
 test('chat endpoint uses ChatService to respond to messages', function () {
-    // Mock the ChatService
-    $this->mock(ChatService::class, function (MockInterface $mock) {
-        $generator = function() {
-            yield (object) ['text' => 'Hello! ', 'finishReason' => null];
-            yield (object) ['text' => 'I can help explain that in simple terms.', 'finishReason' => 'stop'];
-        };
+    $generator = function() {
+        yield (object) ['text' => 'Hello! ', 'finishReason' => null];
+        yield (object) ['text' => 'I can help explain that in simple terms.', 'finishReason' => 'stop'];
+    };
 
-        $mock->shouldReceive('respondAsStream')
+    // Create a mock for PendingRequest
+    $pendingRequest = $this->mock(PendingRequest::class);
+    $pendingRequest->shouldReceive('asStream')
+        ->once()
+        ->andReturn($generator());
+
+    // Mock the ChatService
+    $this->mock(ChatService::class, function (MockInterface $mock) use ($pendingRequest) {
+        $mock->shouldReceive('chat')
             ->once()
-            ->withArgs(function ($content, $messages) {
+            ->withArgs(function ($content, $messages, $settings) {
                 // Verify content
                 if ($content !== 'Some webpage content') {
                     return false;
@@ -127,9 +135,14 @@ test('chat endpoint uses ChatService to respond to messages', function () {
                     return false;
                 }
 
+                // Verify settings is an instance of Settings
+                if (!($settings instanceof Settings)) {
+                    return false;
+                }
+
                 return true;
             })
-            ->andReturn($generator());
+            ->andReturn($pendingRequest);
     });
 
     // Make the request

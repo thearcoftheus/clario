@@ -2,28 +2,45 @@
 
 use App\Services\TextSimplificationService;
 use Mockery\MockInterface;
+use Prism\Prism\Text\PendingRequest;
 
-test('translate endpoint returns 400 when no text is provided', function () {
+test('translate endpoint returns 422 when no text is provided', function () {
     $response = $this->postJson('/api/translate', []);
 
-    $response->assertStatus(400)
-        ->assertJson(['error' => 'No text provided']);
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['content']);
 });
 
 test('translate endpoint uses TextSimplificationService to simplify text', function () {
+    $generator = function(){
+        yield (object) ['text' => 'This is a simple text. ', 'finishReason' => null];
+        yield (object) ['text' => 'Big words like making food from sun and tiny parts in cells are explained easily.', 'finishReason' => 'stop'];
+    };
+
+    // Create a mock for PendingRequest
+    $pendingRequest = $this->mock(PendingRequest::class);
+    $pendingRequest->shouldReceive('asStream')
+        ->once()
+        ->andReturn($generator());
 
     // Mock the TextSimplificationService
-    $this->mock(TextSimplificationService::class, function (MockInterface $mock) {
-
-        $generator = function(){
-            yield (object) ['text' => 'This is a simple text. ', 'finishReason' => null];
-            yield (object) ['text' => 'Big words like making food from sun and tiny parts in cells are explained easily.', 'finishReason' => 'stop'];
-        };
-
-        $mock->shouldReceive('simplifyAsStream')
+    $this->mock(TextSimplificationService::class, function (MockInterface $mock) use ($pendingRequest) {
+        $mock->shouldReceive('simplify')
             ->once()
-            ->with('This is a complex text with difficult words like photosynthesis and mitochondria.')
-            ->andReturn($generator());
+            ->withArgs(function ($content, $settings) {
+                // Verify content
+                if ($content !== 'This is a complex text with difficult words like photosynthesis and mitochondria.') {
+                    return false;
+                }
+
+                // Verify settings is an instance of Settings
+                if (!($settings instanceof \App\DTO\Settings)) {
+                    return false;
+                }
+
+                return true;
+            })
+            ->andReturn($pendingRequest);
     });
 
     // Make the request
@@ -34,5 +51,4 @@ test('translate endpoint uses TextSimplificationService to simplify text', funct
 
     // Assert the response
     $response->assertStatus(200);
-
 });

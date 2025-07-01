@@ -1,10 +1,13 @@
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'extractContent') {
-        const content = extractMainContent();
-        sendResponse({ content: content });
+        sendResponse({
+            title: document.title,
+            url: location.href,
+            content: extractMainContent(),
+        });
     }
 
-    return true;
+    return false;
 });
 
 // Function to extract the main content from the page
