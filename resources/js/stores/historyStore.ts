@@ -1,7 +1,8 @@
+import { useSettingsStore } from '@/stores/settingsStore';
 import dayjs, { Dayjs } from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { defineStore, storeToRefs } from 'pinia';
+import { ref, watch } from 'vue';
 
 dayjs.extend(relativeTime);
 
@@ -21,6 +22,9 @@ export type NewHistoryItem = Pick<HistoryItem, 'name' | 'url' | 'content'>;
 export const useHistoryStore = defineStore('store', function () {
     const historyItems = ref<HistoryItem[]>([]);
 
+    const settingsStore = useSettingsStore();
+    const { settings } = storeToRefs(settingsStore);
+
     function add(item: NewHistoryItem) {
         historyItems.value = historyItems.value.filter(existingItem => existingItem.url !== item.url);
 
@@ -37,6 +41,11 @@ export const useHistoryStore = defineStore('store', function () {
     function remove(item: HistoryItem) {
         historyItems.value = historyItems.value.filter(existingItem => existingItem.url !== item.url);
     }
+
+    watch(settings, () => {
+        if (historyItems.value.length === 0) return;
+        historyItems.value[0].date = dayjs();
+    });
 
     setInterval(() => {
         historyItems.value.map(item => {
