@@ -1,6 +1,6 @@
 <script lang="ts" setup>
+import { useAppStateStore } from '@/stores/appStateStore';
 import { HistoryItem } from '@/stores/historyStore';
-import { useSettingsStore } from '@/stores/settingsStore';
 import { useStream } from '@laravel/stream-vue';
 import { storeToRefs } from 'pinia';
 import { onBeforeUnmount, onMounted, watch } from 'vue';
@@ -9,8 +9,8 @@ const { item } = defineProps<{
     item: HistoryItem;
 }>();
 
-const settingsStore = useSettingsStore();
-const { settings } = storeToRefs(settingsStore);
+const appState = useAppStateStore();
+const { settings } = storeToRefs(appState);
 
 const { data, isStreaming, isFetching, send, cancel } = useStream(route('translate'));
 

@@ -1,4 +1,4 @@
-import { useSettingsStore } from '@/stores/settingsStore';
+import { useAppStateStore } from '@/stores/appStateStore';
 import dayjs, { Dayjs } from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { defineStore, storeToRefs } from 'pinia';
@@ -22,8 +22,8 @@ export type NewHistoryItem = Pick<HistoryItem, 'name' | 'url' | 'content'>;
 export const useHistoryStore = defineStore('store', function () {
     const historyItems = ref<HistoryItem[]>([]);
 
-    const settingsStore = useSettingsStore();
-    const { settings } = storeToRefs(settingsStore);
+    const appState = useAppStateStore();
+    const { settings } = storeToRefs(appState);
 
     function add(item: NewHistoryItem) {
         historyItems.value = historyItems.value.filter(existingItem => existingItem.url !== item.url);
@@ -32,7 +32,7 @@ export const useHistoryStore = defineStore('store', function () {
             ...item,
             simplifiedContent: '',
             isStreaming: false,
-            isFetching: false,
+            isFetching: true,
             date: dayjs(),
             formattedDate: dayjs().fromNow(),
         });

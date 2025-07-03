@@ -3,7 +3,7 @@
     "name": "Clario",
     "version": "1.0.0",
     "description": "Clario",
-    "permissions": ["sidePanel", "storage", "activeTab"],
+    "permissions": ["sidePanel", "storage", "tabs", "activeTab", "scripting"],
     "action": {
         "default_title": "Clario",
         "default_icon": {
@@ -23,11 +23,8 @@
     "background": {
         "service_worker": "background.js"
     },
-    "content_scripts": [
-        {
-            "matches": ["<all_urls>"],
-            "js": ["content.js"],
-            "run_at": "document_idle"
-        }
+    "host_permissions": [
+        "http://*/*",
+        "https://*/*"
     ]
 }

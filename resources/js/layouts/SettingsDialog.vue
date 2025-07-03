@@ -46,7 +46,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { SimplificationLevels, useSettingsStore } from '@/stores/settingsStore';
+import { SimplificationLevels, useAppStateStore } from '@/stores/appStateStore';
 import { CircleCheck, Settings } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { h, ref } from 'vue';
@@ -54,13 +54,13 @@ import { toast } from 'vue-sonner';
 
 const isOpen = ref(false);
 
-const settingsStore = useSettingsStore();
-const { settings } = storeToRefs(settingsStore);
+const appState = useAppStateStore();
+const { settings } = storeToRefs(appState);
 
 const formValues = ref(settings.value);
 
 function onSubmit() {
-    settingsStore.updateSettings(formValues.value);
+    appState.updateSettings(formValues.value);
     isOpen.value = false;
     toast(h('div', { class: 'flex items-center gap-2' }, [h(CircleCheck), 'Settings saved successfully.']));
 }

@@ -15,8 +15,9 @@ const defaultSettings: SettingsState = {
     emoji: true,
 } as const;
 
-export const useSettingsStore = defineStore('settings', () => {
+export const useAppStateStore = defineStore('app', () => {
     const settings = ref<SettingsState>(defaultSettings);
+    const isExtractingContent = ref(true);
 
     chrome.storage.local.get('settings', result => {
         if (result.settings) {
@@ -41,6 +42,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
     return {
         settings,
+        isExtractingContent,
         updateSettings,
     };
 });
