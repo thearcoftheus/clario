@@ -37,6 +37,7 @@ readonly class Settings {
 Use basic words and short sentences while keeping the original meaning.
 Avoid abbreviations and acronyms, or explain them clearly when necessary.
 {$this->isEmoji('Use emojis to help emphasise headings or important keywords. DO NOT overuse emojis.')}
+When referencing a quote from the original text, ensure the original text is preserved. DO NOT simplify or rephrase the text. If the quoted text is difficult to understand, offer a short explanation.
 PROMPT;
     }
 }
