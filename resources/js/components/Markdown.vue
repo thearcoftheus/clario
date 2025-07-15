@@ -3,16 +3,27 @@
 </template>
 
 <script lang="ts" setup>
-import { marked } from 'marked';
+import 'katex/dist/katex.min.css';
+import MarkdownIt from 'markdown-it';
+import markdownItKatex from 'markdown-it-katex';
 import { computed } from 'vue';
 
 const { content } = defineProps<{
     content: string;
 }>();
 
+const md = new MarkdownIt({
+    html: true,
+    linkify: true,
+    typographer: true,
+}).use(markdownItKatex, {
+    throwOnError: false,
+    strict: false,
+});
+
 const markdownContent = computed(() => {
     if (!content) return '';
-    return marked(content);
+    return md.render(content.replace(/…/g, '\\ldots'));
 });
 </script>
 
@@ -166,6 +177,16 @@ const markdownContent = computed(() => {
         th {
             background-color: rgba(0, 0, 0, 0.05);
         }
+    }
+
+    .katex-display {
+        container-type: inline-size;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-width: 100%;
+        padding: 1rem 0.5rem;
+        border-radius: 0.25rem;
+        background-color: rgba(0, 0, 0, 0.05);
     }
 }
 </style>

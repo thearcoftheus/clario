@@ -1,7 +1,7 @@
 <template>
     <div class="grid h-dvh grid-rows-[auto_1fr] gap-4 p-4">
         <div class="mb-2 flex items-center justify-between">
-            <h1 class="text-xl font-bold">Clario <span class="text-base font-normal">v0.3.2</span></h1>
+            <h1 class="text-xl font-bold">Clario <span class="text-base font-normal">v0.3.3</span></h1>
             <SettingsDialog />
         </div>
 
@@ -43,8 +43,8 @@ const historyStore = useHistoryStore();
 const { historyItems } = storeToRefs(historyStore);
 </script>
 
-<style lang="scss" scoped>
-.h-full {
-    height: 100%;
+<style lang="scss">
+html {
+    overflow: hidden;
 }
 </style>

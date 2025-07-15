@@ -13,8 +13,8 @@ class TextSimplificationService {
 [BASE_PROMPT]
 Please rewrite the following text in simple language.
 Format the output using markdown for better readability.
-Provide only the simplified text without any additional comments.
-DO NOT include text at the start saying anything like 'Here's a simplified version:'.
+Provide only the simplified text.
+Do NOT include any comments, explanations, or introductory phrases such as “Here’s a simplified version.”
 PROMPT;
 
     public function getSystemPrompt(Settings $settings): string {

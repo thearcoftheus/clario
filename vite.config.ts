@@ -65,6 +65,6 @@ export default defineConfig(({ mode }) => ({
                 assetFileNames: `assets/[name].[ext]`,
             },
         },
-        outDir: 'chrome_extension/dist',
+        outDir: 'chrome_extension/build',
     },
 }));
