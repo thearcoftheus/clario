@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import route from '@/helpers/route';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { HistoryItem } from '@/stores/historyStore';
 import { useStream } from '@laravel/stream-vue';

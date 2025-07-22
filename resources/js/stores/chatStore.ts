@@ -1,3 +1,4 @@
+import route from '@/helpers/route';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { defineStore, storeToRefs } from 'pinia';

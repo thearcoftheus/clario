@@ -3,8 +3,6 @@
     "type": "module",
     "scripts": {
         "build": "node build.js",
-        "build:ssr": "vite build && vite build --ssr",
-        "dev": "vite",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
         "lint": "eslint . --fix"
@@ -31,7 +29,9 @@
         "@tailwindcss/vite": "^4.1.1",
         "@tanstack/vue-table": "^8.21.3",
         "@vitejs/plugin-vue": "^5.2.1",
+        "@vscode/markdown-it-katex": "^1.1.2",
         "@vueuse/core": "^12.8.2",
+        "axios": "^1.10.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "concurrently": "^9.0.1",
@@ -39,7 +39,6 @@
         "laravel-vite-plugin": "^1.0",
         "lucide-vue-next": "^0.468.0",
         "markdown-it": "^14.1.0",
-        "markdown-it-katex": "^2.0.3",
         "pinia": "^3.0.3",
         "reka-ui": "^2.3.1",
         "tailwind-merge": "^3.2.0",
@@ -54,6 +53,7 @@
     "optionalDependencies": {
         "@rollup/rollup-linux-x64-gnu": "4.9.5",
         "@tailwindcss/oxide-linux-x64-gnu": "^4.0.1",
-        "lightningcss-linux-x64-gnu": "^1.29.1"
+        "lightningcss-linux-x64-gnu": "^1.29.1",
+        "@rollup/rollup-darwin-arm64": "4.9.5"
     }
 }

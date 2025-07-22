@@ -19,17 +19,21 @@ export const useAppStateStore = defineStore('app', () => {
     const settings = ref<SettingsState>(defaultSettings);
     const isExtractingContent = ref(true);
 
-    chrome.storage.local.get('settings', result => {
-        if (result.settings) {
-            Object.entries(result.settings).forEach(([key, value]) => {
-                const settingKey = key as keyof SettingsState;
-                if (settingKey in settings.value && value !== undefined) {
-                    // Use type assertion to bypass the type error
-                    (settings.value as any)[settingKey] = value;
-                }
-            });
-        }
-    });
+    function loadSettingsFromStorage() {
+        chrome.storage.local.get('settings', result => {
+            if (result.settings) {
+                Object.entries(result.settings).forEach(([key, value]) => {
+                    const settingKey = key as keyof SettingsState;
+                    if (settingKey in settings.value && value !== undefined) {
+                        // Use type assertion to bypass the type error
+                        (settings.value as any)[settingKey] = value;
+                    }
+                });
+            }
+        });
+    }
+
+    loadSettingsFromStorage();
 
     function updateSettings(newSettings: Partial<SettingsState>) {
         settings.value = {
@@ -44,5 +48,6 @@ export const useAppStateStore = defineStore('app', () => {
         settings,
         isExtractingContent,
         updateSettings,
+        loadSettingsFromStorage,
     };
 });
