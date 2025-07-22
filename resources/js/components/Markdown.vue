@@ -3,9 +3,9 @@
 </template>
 
 <script lang="ts" setup>
+import markdownItKatex from '@vscode/markdown-it-katex';
 import 'katex/dist/katex.min.css';
 import MarkdownIt from 'markdown-it';
-import markdownItKatex from 'markdown-it-katex';
 import { computed } from 'vue';
 
 const { content } = defineProps<{
