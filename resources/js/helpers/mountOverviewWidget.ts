@@ -12,7 +12,7 @@ function createContainer(): HTMLDivElement {
     container.style.position = 'fixed';
     container.style.bottom = '1rem';
     container.style.right = '1rem';
-    container.style.zIndex = '99999';
+    container.style.zIndex = '999999';
     return container;
 }
 
