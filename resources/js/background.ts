@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendRespon
             return;
 
         case 'getReadability':
-            sendResponse(getReadability(message.content));
+            getReadability(message.content).then(readability => sendResponse(readability));
             return true;
     }
 });
