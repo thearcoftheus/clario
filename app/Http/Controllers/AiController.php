@@ -6,13 +6,15 @@ use App\DTO\Settings;
 use App\Http\Requests\ChatRequest;
 use App\Http\Requests\TranslateRequest;
 use App\Services\ChatService;
+use App\Services\OverviewAgent;
+use App\Services\Readability;
 use App\Services\TextSimplificationService;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 
 class AiController extends Controller {
 
-    protected function streamResponse(\Generator $generator){
+    protected function streamResponse(\Generator $generator) {
         return response()->stream(function() use ($generator) {
             foreach($generator as $chunk){
 //                if($chunk->finishReason) break;
@@ -25,7 +27,22 @@ class AiController extends Controller {
         ]);
     }
 
-    public function translate(TranslateRequest $request, TextSimplificationService $textSimplifier){
+    public function readability(TranslateRequest $request, Readability $readability) {
+        $score = $readability->getReadability(
+            $request->validated('content')
+        );
+        return response()->json($score);
+    }
+
+    public function overview(TranslateRequest $request, OverviewAgent $overviewAgent) {
+        return $this->streamResponse(
+            $overviewAgent->getOverview(
+                $request->validated('content')
+            )->asStream()
+        );
+    }
+
+    public function translate(TranslateRequest $request, TextSimplificationService $textSimplifier) {
         return $this->streamResponse(
             $textSimplifier->simplify(
                 $request->validated('content'),
@@ -34,7 +51,7 @@ class AiController extends Controller {
         );
     }
 
-    public function chat(ChatRequest $request, ChatService $chatService){
+    public function chat(ChatRequest $request, ChatService $chatService) {
 
         $messages = $request->validated('messages', []);
 

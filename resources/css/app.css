@@ -88,7 +88,7 @@
   }
 }
 
-:root {
+:root, :host {
   --background: hsl(0 0% 100%);
   --foreground: hsl(0 0% 3.9%);
   --card: hsl(0 0% 100%);
@@ -183,4 +183,162 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.markdown-content {
+    p, hr, ul, ol {
+        &:not(:first-child) {
+            margin-top: 1.4em;
+        }
+        &:not(:last-child) {
+            margin-bottom: 1.4em;
+        }
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+
+        &:first-child {
+            margin-top: 0;
+        }
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+    h2 {
+        font-size: 1.5rem;
+    }
+    h3 {
+        font-size: 1.3rem;
+    }
+
+    hr {
+        border: 0 none;
+        border-top: 1px solid #ccc;
+    }
+
+    ul,
+    ol {
+        li {
+            margin-left: 1.5em;
+
+            &:not(:last-child) {
+                margin-bottom: 0.8em;
+            }
+
+            > ul,
+            > ol {
+                &:nth-child(1n) {
+                    margin-top: 1em !important;
+                }
+            }
+        }
+    }
+
+    ul > li {
+        list-style: disc outside;
+    }
+
+    li ul > li {
+        list-style: square outside;
+
+        &::marker {
+            color: inherit;
+        }
+    }
+
+    ol > li {
+        list-style: decimal outside;
+
+        &::marker {
+            font-weight: bold;
+        }
+    }
+
+    li ol > li {
+        list-style: lower-alpha;
+
+        &::marker {
+            font-weight: normal;
+        }
+    }
+
+    li li ol > li {
+        list-style: lower-roman;
+    }
+
+    code {
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+
+    pre {
+        container-type: inline-size;
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 1em;
+        border-radius: 5px;
+        overflow-x: auto;
+        margin-bottom: 1em;
+
+        code {
+            background-color: transparent;
+            padding: 0;
+        }
+    }
+
+    blockquote {
+        border-left: 4px solid var(--color-gray-300);
+        padding-left: 1em;
+        color: var(--color-gray-500);
+        margin-bottom: 1em;
+    }
+
+    a {
+        color: var(--color-blue-600);
+        text-decoration: none;
+
+        &:hover,
+        &:focus-visible {
+            text-decoration: underline;
+        }
+    }
+
+    table {
+        border-collapse: collapse;
+        margin-bottom: 1em;
+
+        th,
+        td {
+            border: 1px solid var(--color-gray-300);
+            padding: 0.5em;
+        }
+
+        th {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+    }
+
+    .katex-display {
+        container-type: inline-size;
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-width: 100%;
+        padding: 1rem 0.5rem;
+        border-radius: 0.25rem;
+        background-color: rgba(0, 0, 0, 0.05);
+    }
 }

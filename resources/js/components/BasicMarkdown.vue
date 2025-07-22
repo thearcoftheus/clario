@@ -5,7 +5,6 @@
 <script lang="ts" setup>
 import 'katex/dist/katex.min.css';
 import MarkdownIt from 'markdown-it';
-import markdownItKatex from 'markdown-it-katex';
 import { computed } from 'vue';
 
 const { content } = defineProps<{
@@ -16,13 +15,10 @@ const md = new MarkdownIt({
     html: true,
     linkify: true,
     typographer: true,
-}).use(markdownItKatex, {
-    throwOnError: false,
-    strict: false,
 });
 
 const markdownContent = computed(() => {
     if (!content) return '';
-    return md.render(content.replace(/…/g, '\\ldots'));
+    return md.render(content);
 });
 </script>
