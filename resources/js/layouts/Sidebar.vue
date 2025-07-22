@@ -31,10 +31,10 @@
 <script lang="ts" setup>
 import Chat from '@/components/Chat.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
+import PageSummary from '@/components/PageSummary.vue';
+import SettingsDialog from '@/components/SettingsDialog.vue';
 import { Toaster } from '@/components/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import PageSummary from '@/layouts/PageSummary.vue';
-import SettingsDialog from '@/layouts/SettingsDialog.vue';
 import { useHistoryStore } from '@/stores/historyStore';
 import { storeToRefs } from 'pinia';
 import 'vue-sonner/style.css';
