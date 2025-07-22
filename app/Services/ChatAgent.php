@@ -7,7 +7,7 @@ use Prism\Prism\Text\PendingRequest;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 
-class ChatService extends BaseAgent {
+class ChatAgent extends BaseAgent {
 
     protected const SYSTEM_PROMPT = <<<PROMPT
 [BASE_PROMPT]

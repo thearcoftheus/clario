@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\DTO\Settings;
 use App\Http\Requests\ChatRequest;
 use App\Http\Requests\TranslateRequest;
-use App\Services\ChatService;
+use App\Services\ChatAgent;
 use App\Services\OverviewAgent;
 use App\Services\Readability;
-use App\Services\TextSimplificationService;
+use App\Services\SummaryAgent;
 use Prism\Prism\ValueObjects\Messages\AssistantMessage;
 use Prism\Prism\ValueObjects\Messages\UserMessage;
 
@@ -42,7 +42,7 @@ class AiController extends Controller {
         );
     }
 
-    public function translate(TranslateRequest $request, TextSimplificationService $textSimplifier) {
+    public function translate(TranslateRequest $request, SummaryAgent $textSimplifier) {
         return $this->streamResponse(
             $textSimplifier->simplify(
                 $request->validated('content'),
@@ -51,7 +51,7 @@ class AiController extends Controller {
         );
     }
 
-    public function chat(ChatRequest $request, ChatService $chatService) {
+    public function chat(ChatRequest $request, ChatAgent $chatService) {
 
         $messages = $request->validated('messages', []);
 

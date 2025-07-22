@@ -5,7 +5,7 @@ namespace App\Services;
 use App\DTO\Settings;
 use Prism\Prism\Text\PendingRequest;
 
-class TextSimplificationService extends BaseAgent {
+class SummaryAgent extends BaseAgent {
 
     protected const SYSTEM_PROMPT = <<<PROMPT
 [BASE_PROMPT]
