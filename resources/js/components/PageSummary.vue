@@ -5,10 +5,6 @@
         </div>
         <div v-else-if="historyItems.length === 0" class="self-center py-8 text-center italic accent-gray-700">Refresh page to see summary</div>
         <div v-else class="p-6">
-            <Button @click="appState.updateSettings()">
-                Refresh
-                <RefreshCw class="size-4" aria-hidden="true" />
-            </Button>
             <Markdown :content="historyItems[0].simplifiedContent" />
         </div>
     </StyledTab>
@@ -16,11 +12,9 @@
 
 <script lang="ts" setup>
 import Markdown from '@/components/Markdown.vue';
-import { Button } from '@/components/ui/button';
 import StyledTab from '@/components/ui/StyledTab.vue';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
-import { RefreshCw } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 

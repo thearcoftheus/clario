@@ -23,7 +23,7 @@ export type SettingsState = {
 
 const defaultSettings: SettingsState = {
     simplificationLevel: 'Easy',
-    summaryLength: 'Short',
+    summaryLength: 'Medium',
     emoji: true,
 } as const;
 
@@ -50,8 +50,6 @@ export const useAppStateStore = defineStore('app', () => {
     }
 
     loadSettingsFromStorage();
-
-    console.log(settings.value);
 
     function updateSettings(newSettings: Partial<SettingsState> = {}) {
         settings.value = {
