@@ -1,17 +1,29 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
-export const SimplificationLevels = ['Grade 2-3', 'Grade 7-8'] as const;
-
+export const SimplificationLevels = ['Easy', 'Moderate', 'Challenging'] as const;
 export type SimplificationLevel = (typeof SimplificationLevels)[number];
+
+function isSimplficiationLevel(value: unknown): value is SimplificationLevel {
+    return SimplificationLevels.includes(value as SimplificationLevel);
+}
+
+export const SummaryLengths = ['Short', 'Medium', 'Long'] as const;
+export type SummaryLength = (typeof SummaryLengths)[number];
+
+function isSummaryLength(value: unknown): value is SummaryLength {
+    return SummaryLengths.includes(value as SummaryLength);
+}
 
 export type SettingsState = {
     simplificationLevel: SimplificationLevel;
+    summaryLength: SummaryLength;
     emoji: boolean;
 };
 
 const defaultSettings: SettingsState = {
-    simplificationLevel: 'Grade 2-3',
+    simplificationLevel: 'Easy',
+    summaryLength: 'Short',
     emoji: true,
 } as const;
 
@@ -20,22 +32,28 @@ export const useAppStateStore = defineStore('app', () => {
     const isExtractingContent = ref(true);
 
     function loadSettingsFromStorage() {
-        chrome.storage.local.get('settings', result => {
-            if (result.settings) {
-                Object.entries(result.settings).forEach(([key, value]) => {
-                    const settingKey = key as keyof SettingsState;
-                    if (settingKey in settings.value && value !== undefined) {
-                        // Use type assertion to bypass the type error
-                        (settings.value as any)[settingKey] = value;
-                    }
-                });
+        chrome.storage.local.get<{ settings?: Partial<SettingsState> }>('settings', result => {
+            if (!result.settings) return;
+
+            if (isSimplficiationLevel(result.settings?.simplificationLevel)) {
+                settings.value.simplificationLevel = result.settings.simplificationLevel;
+            }
+
+            if (isSummaryLength(result.settings?.summaryLength)) {
+                settings.value.summaryLength = result.settings.summaryLength;
+            }
+
+            if (typeof result.settings.emoji === 'boolean') {
+                settings.value.emoji = result.settings.emoji;
             }
         });
     }
 
     loadSettingsFromStorage();
 
-    function updateSettings(newSettings: Partial<SettingsState>) {
+    console.log(settings.value);
+
+    function updateSettings(newSettings: Partial<SettingsState> = {}) {
         settings.value = {
             ...settings.value,
             ...newSettings,

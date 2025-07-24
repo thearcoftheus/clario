@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\SimplificationLevel;
+use App\Enums\SummaryLength;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,6 +25,7 @@ class SettingsRequest extends FormRequest {
         return [
             'settings' => ['nullable', 'array'],
             'settings.level' => ['nullable', Rule::enum(SimplificationLevel::class)],
+            'settings.summaryLength' => ['nullable', Rule::enum(SummaryLength::class)],
             'settings.emoji' => ['nullable', 'boolean']
         ];
     }

@@ -3,15 +3,18 @@
 namespace App\DTO;
 
 use App\Enums\SimplificationLevel;
+use App\Enums\SummaryLength;
 
 readonly class Settings {
 
     protected const DEFAULT_SETTINGS = [
-        'level' => SimplificationLevel::GRADE_2_3,
+        'level' => SimplificationLevel::EASY,
+        'summaryLength' => SummaryLength::MEDIUM,
         'emoji' => TRUE,
     ];
 
     public SimplificationLevel $level;
+    public SummaryLength $summaryLength;
     public bool $emoji;
 
     public function __construct(array|null $settings = []) {
