@@ -1,6 +1,7 @@
 import chromeMessage from '@/helpers/chromeMessage';
 import extractMainContent from '@/helpers/extractContent';
-import mountOverviewWidget from '@/helpers/mountOverviewWidget';
+import { mountOverviewWidget } from '@/helpers/mountOverviewWidget';
+import onReady from '@/helpers/onReady';
 import { ChromeMessage } from '@/types/messages';
 
 chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendResponse) => {
@@ -40,8 +41,4 @@ states.forEach(fn => {
     };
 });
 
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    mountOverviewWidget();
-} else {
-    document.addEventListener('DOMContentLoaded', mountOverviewWidget);
-}
+onReady(mountOverviewWidget);

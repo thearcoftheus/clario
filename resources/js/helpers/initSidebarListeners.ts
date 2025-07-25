@@ -4,6 +4,11 @@ import { useHistoryStore } from '@/stores/historyStore';
 import { ChromeMessage } from '@/types/messages';
 import { storeToRefs } from 'pinia';
 
+function initSidebarPort() {
+    // Open sidebar port so that we can detect sidebar open/close
+    chrome.runtime.connect({ name: 'sidebar' });
+}
+
 function injectContentScript(tabId: number, callback: () => any) {
     chrome.scripting.executeScript(
         {
@@ -50,6 +55,8 @@ function getPageContent(tabId: number, retry: number = 3) {
 
 export default function initSidebarListeners() {
     const historyStore = useHistoryStore();
+
+    initSidebarPort();
 
     chrome.runtime.onMessage.addListener((message: ChromeMessage, sender) => {
         if (message.action !== 'pageLoaded') return;

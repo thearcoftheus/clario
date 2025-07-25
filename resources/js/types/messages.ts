@@ -1,6 +1,15 @@
-export type CmOpenSidebar = { action: 'openSidebar' };
-export type CmGetReadability = { action: 'getReadability'; content: string };
-export type CmToggleOverview = { action: 'toggleOverview'; content: string };
+export type CmOpenSidebar = {
+    action: 'openSidebar';
+};
+export type CmGetReadability = {
+    action: 'getReadability';
+    content: string;
+};
+
+export type CmToggleOverview = {
+    action: 'toggleOverview';
+    content: string;
+};
 
 export type CmTabChanged = {
     action: 'tabUpdated' | 'tabActivated';
@@ -9,7 +18,10 @@ export type CmTabChanged = {
     tabId: number | undefined;
 };
 
-export type CmExtractContent = { action: 'extractContent' };
+export type CmExtractContent = {
+    action: 'extractContent';
+};
+
 export type CmPageLoaded = {
     action: 'pageLoaded';
     title: string;
@@ -17,4 +29,21 @@ export type CmPageLoaded = {
     content: string;
 };
 
-export type ChromeMessage = CmOpenSidebar | CmGetReadability | CmToggleOverview | CmTabChanged | CmExtractContent | CmPageLoaded;
+export type CmSidebarState = {
+    action: 'sidebarState';
+    isOpen: boolean;
+};
+
+export type CmGetSidebarState = {
+    action: 'getSidebarState';
+};
+
+export type ChromeMessage =
+    | CmOpenSidebar
+    | CmGetReadability
+    | CmToggleOverview
+    | CmTabChanged
+    | CmExtractContent
+    | CmPageLoaded
+    | CmSidebarState
+    | CmGetSidebarState;
