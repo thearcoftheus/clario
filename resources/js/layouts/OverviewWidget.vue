@@ -1,6 +1,15 @@
 <template>
-    <div class="p-2">
-        <div class="bg-background border-border rounded-md border p-3 shadow-md/25">
+    <div v-if="showWidget" class="p-2">
+        <div class="bg-background border-border relative rounded-md border p-3 shadow-md/25">
+            <button
+                variant="outline"
+                @click="close"
+                aria-label="Close Clario"
+                class="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:border-ring focus-visible:ring-ring/50 absolute top-0 right-0 flex size-6 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-xs focus-visible:ring-[3px]"
+            >
+                <X class="size-4" />
+            </button>
+
             <div class="flex items-center gap-2">
                 <span class="mr-2 text-xl font-bold">Clario</span>
                 <div class="flex items-center gap-2">
@@ -44,8 +53,12 @@ import { Button } from '@/components/ui/button';
 import chromeMessage from '@/helpers/chromeMessage';
 import extractMainContent from '@/helpers/extractContent';
 import { FleschKincaidReadability } from '@/types/types';
-import { ChevronDown, ChevronUp, PanelRight } from 'lucide-vue-next';
+import { ChevronDown, ChevronUp, PanelRight, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+
+const showWidget = ref(true);
+
+const close = () => (showWidget.value = false);
 
 type ReadingLevel = 'Easy' | 'Moderate' | 'Challenging' | 'Advanced';
 
