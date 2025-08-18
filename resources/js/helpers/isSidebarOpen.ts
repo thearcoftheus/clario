@@ -8,7 +8,6 @@ export default function isSidebarOpen(): Promise<boolean> {
                 action: 'getSidebarState',
             }),
             (response: CmSidebarState) => {
-                console.log('Sidebar open:', response.isOpen);
                 resolve(response.isOpen);
             },
         );
