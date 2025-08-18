@@ -1,4 +1,5 @@
 import chromeMessage from '@/helpers/chromeMessage';
+import getChromePort from '@/helpers/getChromePort';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { ChromeMessage } from '@/types/messages';
@@ -6,7 +7,9 @@ import { storeToRefs } from 'pinia';
 
 function initSidebarPort() {
     // Open sidebar port so that we can detect sidebar open/close
-    chrome.runtime.connect({ name: 'sidebar' });
+    getChromePort('sidebar', {
+        onDisconnect: initSidebarPort,
+    });
 }
 
 function injectContentScript(tabId: number, callback: () => any) {

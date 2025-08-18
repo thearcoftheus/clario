@@ -123,7 +123,9 @@ function toggleOverview() {
 
     loadingOverview.value = true;
 
-    const port = getChromePort('overview', handleOverviewResponse);
+    const port = getChromePort('overview', {
+        onMessage: handleOverviewResponse,
+    });
 
     port?.postMessage(
         chromeMessage({

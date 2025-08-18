@@ -2,17 +2,20 @@ import { ChromeMessage } from '@/types/messages';
 
 const ports: Record<string, chrome.runtime.Port> = {};
 
-export default function getChromePort(
-    name: string,
-    onMessage: (message: ChromeMessage, port: chrome.runtime.Port) => void,
-): chrome.runtime.Port | null {
+type PortOptions = {
+    onMessage?: (message: ChromeMessage, port: chrome.runtime.Port) => void;
+    onDisconnect?: (port: chrome.runtime.Port) => void;
+};
+
+export default function getChromePort(name: string, options: PortOptions = {}): chrome.runtime.Port | null {
     if (name in ports) return ports[name];
 
     try {
         const port = chrome.runtime.connect({ name });
-        port.onMessage.addListener(onMessage);
-        port.onDisconnect.addListener(() => {
+        if (options.onMessage) port.onMessage.addListener(options.onMessage);
+        port.onDisconnect.addListener(port => {
             delete ports[name];
+            if (options.onDisconnect) options.onDisconnect(port);
         });
         ports[name] = port;
         return port;
