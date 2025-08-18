@@ -1,5 +1,6 @@
 import tailwindStyles from '@/../css/shadow.css?inline';
 import isSidebarOpen from '@/helpers/isSidebarOpen';
+import tailwindFontSizeOverrides from '@/helpers/tailwindFontSizeOverrides';
 import OverviewWidget from '@/layouts/OverviewWidget.vue';
 import { ChromeMessage } from '@/types/messages';
 import { createPinia } from 'pinia';
@@ -14,10 +15,15 @@ async function createContainer(): Promise<HTMLDivElement> {
     container.id = 'clario-container';
 
     container.style.position = 'fixed';
-    container.style.bottom = '1rem';
-    container.style.right = '1rem';
-    container.style.zIndex = '999999';
+    container.style.bottom = 'calc(1rem * var(--tw-multiplier, 1))';
+    container.style.right = 'calc(1rem * var(--tw-multiplier, 1))';
+    container.style.zIndex = '2147483647';
     container.style.transition = 'opacity 0.2s';
+
+    const overrides = tailwindFontSizeOverrides();
+    Object.entries(overrides).forEach(([key, value]) => {
+        container.style.setProperty(key, value);
+    });
 
     const isOpen = await isSidebarOpen();
     setContainerState(container, isOpen);

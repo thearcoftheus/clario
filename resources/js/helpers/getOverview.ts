@@ -1,6 +1,10 @@
 import route from '@/helpers/route';
 
-export default async function getOverview(content: string, callback: (responseText: string) => void) {
+export default async function getOverview(
+    content: string,
+    callback: (responseText: string) => void,
+    errorCallback: (errorMessage: string, error: any) => void,
+) {
     let response;
 
     try {
@@ -13,12 +17,12 @@ export default async function getOverview(content: string, callback: (responseTe
             body: JSON.stringify({ content }),
         });
     } catch (e) {
-        console.error('Network error', e);
+        errorCallback('Network error', e);
         return;
     }
 
     if (!response.ok || !response.body) {
-        console.error('Bad response', response.status);
+        errorCallback('Bad response', response.status);
         return;
     }
 
@@ -38,7 +42,7 @@ export default async function getOverview(content: string, callback: (responseTe
         }
     } catch (e) {
         if (typeof e === 'object' && e !== null && 'name' in e && e.name !== 'AbortError') {
-            console.error('Stream read error:', e);
+            errorCallback('Stream read error', e);
         }
     } finally {
         reader.cancel();

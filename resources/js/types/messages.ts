@@ -38,6 +38,17 @@ export type CmGetSidebarState = {
     action: 'getSidebarState';
 };
 
+export type CmOverviewResponse = {
+    action: 'overviewResponse';
+    content: string;
+};
+
+export type CmOverviewError = {
+    action: 'overviewError';
+    errorMessage: string;
+    error: any;
+};
+
 export type ChromeMessage =
     | CmOpenSidebar
     | CmGetReadability
@@ -46,4 +57,6 @@ export type ChromeMessage =
     | CmExtractContent
     | CmPageLoaded
     | CmSidebarState
-    | CmGetSidebarState;
+    | CmGetSidebarState
+    | CmOverviewResponse
+    | CmOverviewError;

@@ -3,7 +3,7 @@ import getOverview from '@/helpers/getOverview';
 import { getReadability } from '@/helpers/getReadability';
 import initCsrf from '@/helpers/initCsrf';
 import openSidebar from '@/helpers/openSidebar';
-import { ChromeMessage } from '@/types/messages';
+import { ChromeMessage, CmOverviewError, CmOverviewResponse } from '@/types/messages';
 
 initCsrf();
 
@@ -43,9 +43,20 @@ chrome.runtime.onConnect.addListener(port => {
     port.onMessage.addListener(async (message: ChromeMessage) => {
         if (message.action !== 'toggleOverview') return;
 
-        getOverview(message.content, responseText => {
-            port.postMessage({ content: responseText });
-        });
+        const respond = (response: CmOverviewResponse | CmOverviewError) => {
+            port.postMessage(response);
+        };
+
+        getOverview(
+            message.content,
+            responseText => {
+                respond({ action: 'overviewResponse', content: responseText });
+            },
+            (errorMessage, error) => {
+                console.error(errorMessage, error);
+                respond({ action: 'overviewError', errorMessage, error });
+            },
+        );
     });
 });
 

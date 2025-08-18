@@ -52,6 +52,8 @@ import BasicMarkdown from '@/components/BasicMarkdown.vue';
 import { Button } from '@/components/ui/button';
 import chromeMessage from '@/helpers/chromeMessage';
 import extractMainContent from '@/helpers/extractContent';
+import getChromePort from '@/helpers/getChromePort';
+import { ChromeMessage } from '@/types/messages';
 import { FleschKincaidReadability } from '@/types/types';
 import { ChevronDown, ChevronUp, PanelRight, X } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
@@ -93,15 +95,23 @@ chrome.runtime.sendMessage(
     },
 );
 
-const port = chrome.runtime.connect({ name: 'overview' });
-
-port.onMessage.addListener(message => {
-    if (message.content) {
+function handleOverviewResponse(message: ChromeMessage) {
+    if (message.action === 'overviewResponse') {
         overview.value = message.content;
         showOverview.value = true;
         loadingOverview.value = false;
+    } else {
+        // The only other thing that should be returned is an error, so we assume it is an error and reset the overview section
+        showOverview.value = false;
+        loadingOverview.value = false;
+
+        if (message.action === 'overviewError') {
+            console.error(message.errorMessage, message.error);
+        } else {
+            console.error('Unknown message received from overview port:', message);
+        }
     }
-});
+}
 
 function toggleOverview() {
     if (loadingOverview.value) return;
@@ -113,12 +123,18 @@ function toggleOverview() {
 
     loadingOverview.value = true;
 
-    port.postMessage(
+    const port = getChromePort('overview', {
+        onMessage: handleOverviewResponse,
+    });
+
+    port?.postMessage(
         chromeMessage({
             action: 'toggleOverview',
             content: extractMainContent(),
         }),
     );
+
+    if (!port) loadingOverview.value = false;
 }
 
 function openSidebar() {
