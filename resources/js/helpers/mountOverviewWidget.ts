@@ -16,7 +16,7 @@ async function createContainer(): Promise<HTMLDivElement> {
     container.style.position = 'fixed';
     container.style.bottom = '1rem';
     container.style.right = '1rem';
-    container.style.zIndex = '999999';
+    container.style.zIndex = '2147483647';
     container.style.transition = 'opacity 0.2s';
 
     const isOpen = await isSidebarOpen();
