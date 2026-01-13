@@ -9,6 +9,7 @@
             <TabsList>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
                 <TabsTrigger value="chat">Chat</TabsTrigger>
+                <TabsTrigger value="narrate">Narrate</TabsTrigger>
                 <!--                <TabsTrigger value="history">History</TabsTrigger>-->
             </TabsList>
             <TabsContent value="summary">
@@ -16,6 +17,9 @@
             </TabsContent>
             <TabsContent value="chat">
                 <Chat />
+            </TabsContent>
+            <TabsContent value="narrate">
+                <Narrate />
             </TabsContent>
             <!--            <TabsContent value="history">-->
             <!--                <History />-->
@@ -31,6 +35,7 @@
 <script lang="ts" setup>
 import Chat from '@/components/Chat.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
+import Narrate from '@/components/Narrate.vue';
 import PageSummary from '@/components/PageSummary.vue';
 import SettingsDialog from '@/components/SettingsDialog.vue';
 import { Toaster } from '@/components/ui/sonner';
