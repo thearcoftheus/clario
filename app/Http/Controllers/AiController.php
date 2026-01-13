@@ -76,7 +76,25 @@ class AiController extends Controller {
         $text = $request->validated('content');
 
         // Strip markdown formatting from text
-        $plainText = html_entity_decode(strip_tags($text));
+        $plainText = $text;
+        // Remove headings (## Heading)
+        $plainText = preg_replace('/^#{1,6}\s*/m', '', $plainText);
+        // Remove bold (**text** or __text__)
+        $plainText = preg_replace('/\*\*(.+?)\*\*/s', '$1', $plainText);
+        $plainText = preg_replace('/__(.+?)__/s', '$1', $plainText);
+        // Remove italic (*text* or _text_)
+        $plainText = preg_replace('/\*(.+?)\*/s', '$1', $plainText);
+        $plainText = preg_replace('/_(.+?)_/s', '$1', $plainText);
+        // Remove inline code (`code`)
+        $plainText = preg_replace('/`(.+?)`/', '$1', $plainText);
+        // Remove links [text](url) -> text
+        $plainText = preg_replace('/\[(.+?)\]\(.+?\)/', '$1', $plainText);
+        // Remove bullet points
+        $plainText = preg_replace('/^[\*\-\+]\s+/m', '', $plainText);
+        // Remove numbered lists (1. item)
+        $plainText = preg_replace('/^\d+\.\s+/m', '', $plainText);
+        // Strip any remaining HTML and decode entities
+        $plainText = html_entity_decode(strip_tags($plainText));
 
         $options = [
             'voice' => $request->validated('voice'),

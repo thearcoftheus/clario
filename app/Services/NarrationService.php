@@ -16,6 +16,16 @@ class NarrationService {
     }
 
     /**
+     * Check if a voice is a Chirp3-HD voice
+     *
+     * @param string $voiceName
+     * @return bool
+     */
+    protected function isChirp3Voice(string $voiceName): bool {
+        return str_contains($voiceName, 'Chirp3-HD');
+    }
+
+    /**
      * Generate audio narration from text
      *
      * @param string $text The text to narrate
@@ -38,19 +48,24 @@ class NarrationService {
         ]);
 
         // Build request payload for Google Cloud TTS REST API
+        $voiceName = $options['voice'] ?? 'en-US-Neural2-C';
         $payload = [
             'input' => [
                 'text' => $text,
             ],
             'voice' => [
                 'languageCode' => $options['language'] ?? 'en-US',
-                'name' => $options['voice'] ?? 'en-US-Neural2-C',
+                'name' => $voiceName,
             ],
             'audioConfig' => [
                 'audioEncoding' => 'MP3',
-                'speakingRate' => $options['speed'] ?? 1.0,
             ],
         ];
+
+        // Add speakingRate only for non-Chirp3 voices (Chirp3-HD doesn't support it)
+        if (!$this->isChirp3Voice($voiceName)) {
+            $payload['audioConfig']['speakingRate'] = $options['speed'] ?? 1.0;
+        }
 
         // Add optional parameters
         if (isset($options['pitch'])) {
