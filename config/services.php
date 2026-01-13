@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'google_cloud_tts' => [
+        'api_key' => env('GOOGLE_CLOUD_TTS_API_KEY'),
+    ],
+
 ];

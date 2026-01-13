@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\DTO\Settings;
 use App\Http\Requests\ChatRequest;
+use App\Http\Requests\NarrationRequest;
 use App\Http\Requests\TranslateRequest;
 use App\Services\ChatAgent;
+use App\Services\NarrationService;
 use App\Services\OverviewAgent;
 use App\Services\Readability;
 use App\Services\SummaryAgent;
@@ -68,6 +70,57 @@ class AiController extends Controller {
                 new Settings($request->validated('settings')),
             )->asStream()
         );
+    }
+
+    public function narrate(NarrationRequest $request, NarrationService $narrationService) {
+        $text = $request->validated('content');
+
+        // Strip markdown formatting from text
+        $plainText = html_entity_decode(strip_tags($text));
+
+        $options = [
+            'voice' => $request->validated('voice'),
+            'language' => $request->validated('language', 'en-US'),
+            'speed' => $request->validated('speed', 1.0),
+            'pitch' => $request->validated('pitch'),
+            'gender' => $request->validated('gender'),
+        ];
+
+        // Remove null values
+        $options = array_filter($options, fn($value) => $value !== null);
+
+        try {
+            $audioContent = $narrationService->generateAudio($plainText, $options);
+
+            return response($audioContent, 200, [
+                'Content-Type' => 'audio/mpeg',
+                'Content-Length' => strlen($audioContent),
+                'Cache-Control' => 'public, max-age=604800', // Cache for 7 days
+            ]);
+
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage();
+
+            // Check if this is an API key or permission issue
+            if (
+                str_contains($errorMessage, 'PERMISSION_DENIED') ||
+                str_contains($errorMessage, '403') ||
+                str_contains($errorMessage, 'API key not valid') ||
+                str_contains($errorMessage, 'API has not been used') ||
+                str_contains($errorMessage, 'disabled')
+            ) {
+                return response()->json([
+                    'error' => 'API Configuration Error',
+                    'message' => 'There is an issue with your Google Cloud API key or the Text-to-Speech API is not enabled. Please check your API key configuration and ensure the Cloud Text-to-Speech API is enabled in your Google Cloud project.',
+                ], 500);
+            }
+
+            // Generic error for other issues
+            return response()->json([
+                'error' => 'Failed to generate audio',
+                'message' => $errorMessage,
+            ], 500);
+        }
     }
 
 }
