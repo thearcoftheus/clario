@@ -117,35 +117,11 @@
                         class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         :disabled="isGenerating || isPlaying"
                     >
-                        <optgroup label="Chirp3-HD (Most Natural)">
-                            <option value="en-US-Chirp3-HD-Kore">Kore - Female, warm & clear</option>
-                            <option value="en-US-Chirp3-HD-Charon">Charon - Male, deep & calm</option>
-                            <option value="en-US-Chirp3-HD-Aoede">Aoede - Female, bright & expressive</option>
-                            <option value="en-US-Chirp3-HD-Fenrir">Fenrir - Male, strong & authoritative</option>
-                            <option value="en-US-Chirp3-HD-Puck">Puck - Male, friendly & conversational</option>
-                        </optgroup>
-                        <optgroup label="WaveNet">
-                            <option value="en-US-Wavenet-A">English (US) - WaveNet Male A</option>
-                            <option value="en-US-Wavenet-B">English (US) - WaveNet Male B</option>
-                            <option value="en-US-Wavenet-C">English (US) - WaveNet Female C</option>
-                            <option value="en-US-Wavenet-D">English (US) - WaveNet Male D</option>
-                            <option value="en-US-Wavenet-F">English (US) - WaveNet Female F</option>
-                        </optgroup>
-                        <optgroup label="Neural2">
-                            <option value="en-US-Neural2-A">English (US) - Neural2 Female A</option>
-                            <option value="en-US-Neural2-C">English (US) - Neural2 Female C</option>
-                            <option value="en-US-Neural2-D">English (US) - Neural2 Male D</option>
-                            <option value="en-US-Neural2-E">English (US) - Neural2 Female E</option>
-                            <option value="en-US-Neural2-F">English (US) - Neural2 Female F</option>
-                            <option value="en-US-Neural2-G">English (US) - Neural2 Female G</option>
-                            <option value="en-US-Neural2-H">English (US) - Neural2 Female H</option>
-                            <option value="en-US-Neural2-I">English (US) - Neural2 Male I</option>
-                            <option value="en-US-Neural2-J">English (US) - Neural2 Male J</option>
-                            <option value="en-GB-Neural2-A">English (UK) - Neural2 Female A</option>
-                            <option value="en-GB-Neural2-B">English (UK) - Neural2 Male B</option>
-                            <option value="en-GB-Neural2-C">English (UK) - Neural2 Female C</option>
-                            <option value="en-GB-Neural2-D">English (UK) - Neural2 Male D</option>
-                        </optgroup>
+                        <option value="en-US-Chirp3-HD-Kore">Kore - Female, warm & clear</option>
+                        <option value="en-US-Chirp3-HD-Charon">Charon - Male, deep & calm</option>
+                        <option value="en-US-Chirp3-HD-Aoede">Aoede - Female, bright & expressive</option>
+                        <option value="en-US-Chirp3-HD-Fenrir">Fenrir - Male, strong & authoritative</option>
+                        <option value="en-US-Chirp3-HD-Puck">Puck - Male, friendly & conversational</option>
                     </select>
                 </div>
 
@@ -178,7 +154,7 @@ const { historyItems } = storeToRefs(historyStore);
 const isPlaying = ref(false);
 const isGenerating = ref(false);
 const speed = ref(1);
-const selectedVoice = ref('en-US-Neural2-C');
+const selectedVoice = ref('en-US-Chirp3-HD-Kore');
 const audioUrl = ref<string | null>(null);
 const error = ref<string | null>(null);
 const currentTime = ref(0);

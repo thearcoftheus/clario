@@ -42,6 +42,42 @@
                         </div>
                     </div>
 
+                    <div class="grid gap-3">
+                        <Label for="internetSpeed">Internet speed</Label>
+                        <Slider v-model="internetSpeed" :min="0" :max="InternetSpeeds.length - 1" :step="1" id="internetSpeed" />
+                        <div class="text-muted-foreground flex justify-between">
+                            <div
+                                v-for="(speed, i) in InternetSpeeds"
+                                :key="speed"
+                                class="flex-1"
+                                :class="i == 0 ? 'text-left' : i == InternetSpeeds.length - 1 ? 'text-right' : 'text-center'"
+                            >
+                                {{ speed }}
+                            </div>
+                        </div>
+                        <div v-if="networkInfo" class="text-muted-foreground text-sm">
+                            Detected: {{ networkInfo.downlink }} Mbps / {{ networkInfo.effectiveType }} effective type / {{ networkInfo.type }} connection type
+                        </div>
+                        <div v-else class="text-muted-foreground text-sm">
+                            Detected: Network info unavailable
+                        </div>
+                    </div>
+
+                    <div class="grid gap-3">
+                        <Label for="voiceOption">Voice option</Label>
+                        <Slider v-model="voiceOption" :min="0" :max="VoiceOptions.length - 1" :step="1" id="voiceOption" />
+                        <div class="text-muted-foreground flex justify-between">
+                            <div
+                                v-for="(option, i) in VoiceOptions"
+                                :key="option"
+                                class="flex-1"
+                                :class="i == 0 ? 'text-left' : 'text-right'"
+                            >
+                                {{ option }}
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex items-center space-x-2">
                         <Checkbox id="emoji" v-model="formValues.emoji" />
                         <Label for="emoji">Use emoji?</Label>
@@ -61,13 +97,47 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
-import { SimplificationLevels, SummaryLengths, useAppStateStore } from '@/stores/appStateStore';
+import { InternetSpeeds, SimplificationLevels, SummaryLengths, VoiceOptions, useAppStateStore } from '@/stores/appStateStore';
 import { CircleCheck, Settings } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { h, ref, watch } from 'vue';
+import { h, onMounted, onUnmounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+interface NetworkInfo {
+    downlink: number;
+    effectiveType: string;
+    type: string;
+}
+
 const isOpen = ref(false);
+
+const networkInfo = ref<NetworkInfo | null>(null);
+
+function updateNetworkInfo() {
+    const connection = (navigator as any).connection;
+    if (connection) {
+        networkInfo.value = {
+            downlink: connection.downlink,
+            effectiveType: connection.effectiveType,
+            type: connection.type ?? 'unknown',
+        };
+    }
+}
+
+onMounted(() => {
+    updateNetworkInfo();
+    const connection = (navigator as any).connection;
+    if (connection) {
+        connection.addEventListener('change', updateNetworkInfo);
+    }
+});
+
+onUnmounted(() => {
+    const connection = (navigator as any).connection;
+    if (connection) {
+        connection.removeEventListener('change', updateNetworkInfo);
+    }
+});
 
 const appState = useAppStateStore();
 const { settings } = storeToRefs(appState);
@@ -99,6 +169,34 @@ watch(
 
 watch(summaryLength, () => {
     formValues.value.summaryLength = SummaryLengths[summaryLength.value[0]];
+});
+
+const internetSpeed = ref([0]);
+
+watch(
+    () => settings.value.internetSpeed,
+    () => {
+        internetSpeed.value = [InternetSpeeds.indexOf(settings.value.internetSpeed)];
+    },
+    { immediate: true },
+);
+
+watch(internetSpeed, () => {
+    formValues.value.internetSpeed = InternetSpeeds[internetSpeed.value[0]];
+});
+
+const voiceOption = ref([0]);
+
+watch(
+    () => settings.value.voiceOption,
+    () => {
+        voiceOption.value = [VoiceOptions.indexOf(settings.value.voiceOption)];
+    },
+    { immediate: true },
+);
+
+watch(voiceOption, () => {
+    formValues.value.voiceOption = VoiceOptions[voiceOption.value[0]];
 });
 
 function onSubmit() {
