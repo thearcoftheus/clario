@@ -10,6 +10,7 @@
                 <TabsTrigger value="summary">Summary</TabsTrigger>
                 <TabsTrigger value="chat">Chat</TabsTrigger>
                 <TabsTrigger value="narrate">Narrate</TabsTrigger>
+                <TabsTrigger value="avatar">Avatar</TabsTrigger>
                 <!--                <TabsTrigger value="history">History</TabsTrigger>-->
             </TabsList>
             <TabsContent value="summary">
@@ -21,6 +22,9 @@
             <TabsContent value="narrate">
                 <NarrateAdvanced v-if="settings.voiceOption === 'Advanced'" />
                 <Narrate v-else />
+            </TabsContent>
+            <TabsContent value="avatar">
+                <AvatarPane />
             </TabsContent>
             <!--            <TabsContent value="history">-->
             <!--                <History />-->
@@ -34,6 +38,7 @@
 </template>
 
 <script lang="ts" setup>
+import AvatarPane from '@/components/AvatarPane.vue';
 import Chat from '@/components/Chat.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
 import Narrate from '@/components/Narrate.vue';
