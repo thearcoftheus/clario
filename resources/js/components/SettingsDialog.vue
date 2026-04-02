@@ -5,13 +5,13 @@
                 <Settings class="h-5 w-5" />
             </Button>
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent class="max-h-[85vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Settings</DialogTitle>
             </DialogHeader>
 
-            <form @submit.prevent="onSubmit">
-                <div class="space-y-10 py-4">
+            <form @submit.prevent="onSubmit" class="flex flex-col overflow-hidden">
+                <div class="space-y-10 py-4 overflow-y-auto flex-1 pr-2">
                     <div class="grid gap-3">
                         <Label for="simplificationLevel">Reading level</Label>
                         <Slider v-model="simplificationLevel" :min="0" :max="SimplificationLevels.length - 1" :step="1" id="simplificationLevel" />
@@ -78,6 +78,21 @@
                         </div>
                     </div>
 
+                    <div class="grid gap-3">
+                        <Label for="videoProvider">Video avatar provider</Label>
+                        <Slider v-model="videoProvider" :min="0" :max="VideoProviders.length - 1" :step="1" id="videoProvider" />
+                        <div class="text-muted-foreground flex justify-between">
+                            <div
+                                v-for="(provider, i) in VideoProviders"
+                                :key="provider"
+                                class="flex-1"
+                                :class="i == 0 ? 'text-left' : 'text-right'"
+                            >
+                                {{ provider }}
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="flex items-center space-x-2">
                         <Checkbox id="emoji" v-model="formValues.emoji" />
                         <Label for="emoji">Use emoji?</Label>
@@ -97,7 +112,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
-import { InternetSpeeds, SimplificationLevels, SummaryLengths, VoiceOptions, useAppStateStore } from '@/stores/appStateStore';
+import { InternetSpeeds, SimplificationLevels, SummaryLengths, VideoProviders, VoiceOptions, useAppStateStore } from '@/stores/appStateStore';
 import { CircleCheck, Settings } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { h, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -197,6 +212,20 @@ watch(
 
 watch(voiceOption, () => {
     formValues.value.voiceOption = VoiceOptions[voiceOption.value[0]];
+});
+
+const videoProvider = ref([0]);
+
+watch(
+    () => settings.value.videoProvider,
+    () => {
+        videoProvider.value = [VideoProviders.indexOf(settings.value.videoProvider)];
+    },
+    { immediate: true },
+);
+
+watch(videoProvider, () => {
+    formValues.value.videoProvider = VideoProviders[videoProvider.value[0]];
 });
 
 function onSubmit() {

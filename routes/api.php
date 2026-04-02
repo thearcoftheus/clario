@@ -16,5 +16,12 @@ Route::post('/chat', [AiController::class, 'chat'])->name('chat');
 Route::post('/narrate', [AiController::class, 'narrate'])->name('narrate');
 
 // Avatar video generation (D-ID)
+Route::post('/avatar/script', [AvatarController::class, 'prepareScript'])->name('avatar.script');
 Route::post('/avatar/generate', [AvatarController::class, 'generate'])->name('avatar.generate');
 Route::get('/avatar/status/{jobId}', [AvatarController::class, 'status'])->name('avatar.status');
+
+// Simli text-to-video generation
+Route::post('/avatar/simli/generate', [AvatarController::class, 'simliGenerate'])->name('avatar.simli.generate');
+
+// Cartesia TTS for Simli streaming
+Route::post('/avatar/cartesia/tts', [AvatarController::class, 'cartesiaTTS'])->name('avatar.cartesia.tts');

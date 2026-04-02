@@ -29,6 +29,13 @@ function isVoiceOption(value: unknown): value is VoiceOption {
     return VoiceOptions.includes(value as VoiceOption);
 }
 
+export const VideoProviders = ['D-ID', 'Simli'] as const;
+export type VideoProvider = (typeof VideoProviders)[number];
+
+function isVideoProvider(value: unknown): value is VideoProvider {
+    return VideoProviders.includes(value as VideoProvider);
+}
+
 function detectInternetSpeed(): InternetSpeed {
     const connection = (navigator as any).connection;
     if (!connection || typeof connection.downlink !== 'number') {
@@ -54,6 +61,7 @@ export type SettingsState = {
     summaryLength: SummaryLength;
     internetSpeed: InternetSpeed;
     voiceOption: VoiceOption;
+    videoProvider: VideoProvider;
     emoji: boolean;
 };
 
@@ -64,6 +72,7 @@ const defaultSettings: SettingsState = {
     summaryLength: 'Medium',
     internetSpeed: detectedInternetSpeed,
     voiceOption: detectVoiceOption(detectedInternetSpeed),
+    videoProvider: 'D-ID',
     emoji: true,
 };
 
@@ -89,6 +98,10 @@ export const useAppStateStore = defineStore('app', () => {
 
             if (isVoiceOption(result.settings?.voiceOption)) {
                 settings.value.voiceOption = result.settings.voiceOption;
+            }
+
+            if (isVideoProvider(result.settings?.videoProvider)) {
+                settings.value.videoProvider = result.settings.videoProvider;
             }
 
             if (typeof result.settings.emoji === 'boolean') {
