@@ -143,9 +143,18 @@ async function startStream() {
     if (!canStart.value || !videoRef.value || !audioRef.value) return;
 
     try {
-        status.value = 'connecting';
         errorMessage.value = '';
 
+        // IMPORTANT: Fetch Cartesia audio FIRST, before establishing WebRTC connection
+        // This avoids the Simli connection timing out (maxIdleTime: 30s) while waiting
+        // for the slow Cartesia TTS API (~30-60 seconds for long text)
+        status.value = 'preparing';
+        console.log('[Simli] Fetching Cartesia audio first...');
+        const pcm16Audio = await fetchCartesiaAudio(props.scriptText);
+        console.log('[Simli] Cartesia audio ready, size:', pcm16Audio.length);
+
+        // Now that audio is ready, establish the WebRTC connection
+        status.value = 'connecting';
         console.log('[Simli] Generating session token...');
 
         // Generate session token
@@ -196,13 +205,7 @@ async function startStream() {
         // Start the WebRTC connection
         console.log('[Simli] Starting connection...');
         await simliClient.start();
-        console.log('[Simli] Connection started');
-
-        // Generate audio with Cartesia
-        status.value = 'preparing';
-        console.log('[Simli] Fetching Cartesia audio...');
-        const pcm16Audio = await fetchCartesiaAudio(props.scriptText);
-        console.log('[Simli] Cartesia audio ready, size:', pcm16Audio.length);
+        console.log('[Simli] Connection started, sending audio immediately...');
 
         // Stream is now active
         status.value = 'streaming';

@@ -39,4 +39,8 @@ return [
         'api_key' => env('GOOGLE_CLOUD_TTS_API_KEY'),
     ],
 
+    'clario' => [
+        'api_key' => env('CLARIO_API_KEY'),
+    ],
+
 ];

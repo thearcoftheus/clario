@@ -110,14 +110,91 @@ npm run format:check
 npm run lint
 ```
 
+## Remote Deployment
+
+You can deploy the Laravel backend to a remote server (like Cloudways) so testers can use the extension without running a local server.
+
+### Building for Production
+
+**Option 1: Set the URL in .env before building**
+
+```bash
+# Edit .env and set VITE_API_URL to your production server
+VITE_API_URL=https://your-cloudways-app.com
+
+# Build the extension
+npm run build:production
+```
+
+**Option 2: Pass the URL directly to the build command**
+
+```bash
+npm run build:production -- --url https://your-cloudways-app.com
+```
+
+### Deploying to Cloudways
+
+1. **Create a PHP application** on Cloudways (PHP 8.3+)
+
+2. **Upload your Laravel code** via Git or SFTP
+
+3. **Set up environment variables** on the server:
+   - Copy `.env.example` to `.env`
+   - Set `APP_URL` to your Cloudways domain
+   - Set `APP_ENV=production` and `APP_DEBUG=false`
+   - Add all your API keys (GEMINI_API_KEY, DID_API_KEY, etc.)
+
+4. **Run server setup commands**:
+   ```bash
+   composer install --optimize-autoloader --no-dev
+   php artisan key:generate
+   php artisan migrate --force
+   ```
+
+5. **Build the extension for production**:
+   ```bash
+   npm run build:production -- --url https://your-cloudways-app.com
+   ```
+
+6. **Distribute the extension**: Share the `chrome_extension/` folder with testers. They can load it as an unpacked extension.
+
+### API Key Authentication
+
+The extension uses a simple API key to authenticate requests. This prevents unauthorized use of your server.
+
+**1. Generate an API key** (any random string works):
+```bash
+# Example: generate a random key
+openssl rand -hex 32
+```
+
+**2. Set the key on your server** (in `.env`):
+```
+CLARIO_API_KEY=your-generated-key-here
+```
+
+**3. Set the same key for the extension build** (in your local `.env`):
+```
+VITE_API_KEY=your-generated-key-here
+```
+
+**4. Build and distribute**:
+```bash
+npm run build:production -- --url https://your-cloudways-app.com
+```
+
+The extension will include the API key, and the server will validate it on every request.
+
+**Note**: For local development, you can leave both `CLARIO_API_KEY` and `VITE_API_KEY` empty - the server will skip authentication if no key is configured.
+
 ## Troubleshooting
 
 ### Extension spinner keeps spinning
 
 If the content reading level spinner never stops:
 
-1. Make sure the Laravel server is running (`php artisan serve`)
-2. Check that `APP_URL` in `.env` is set to `http://localhost:8000`
+1. Make sure the Laravel server is running (`php artisan serve`) or you're connected to a remote server
+2. Check that `VITE_API_URL` in `.env` points to your server (e.g., `http://localhost:8000` for local)
 3. Rebuild the extension (`npm run build`)
 4. Reload the extension in Chrome
 

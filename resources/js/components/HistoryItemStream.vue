@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { HistoryItem } from '@/stores/historyStore';
@@ -13,7 +14,9 @@ const { item } = defineProps<{
 const appState = useAppStateStore();
 const { settings } = storeToRefs(appState);
 
-const { data, isStreaming, isFetching, send, cancel } = useStream(route('translate'));
+const { data, isStreaming, isFetching, send, cancel } = useStream(route('translate'), {
+    headers: getApiHeaders(),
+});
 
 watch(data, v => (item.simplifiedContent = v), { immediate: true });
 watch(isFetching, v => (item.isFetching = v), { immediate: true });

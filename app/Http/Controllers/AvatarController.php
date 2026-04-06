@@ -11,7 +11,7 @@ use Prism\Prism\Prism;
 class AvatarController extends Controller
 {
     private const PRESENTER_ID = 'v2_public_Alyssa_NoHands_BlackShirt_Home@Mvn6Nalx90';
-    private const MAX_SUMMARY_LENGTH = 2000;
+    private const MAX_SUMMARY_LENGTH = 1000;
 
     // Map simplification level to grade description
     private const READING_LEVELS = [

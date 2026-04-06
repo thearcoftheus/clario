@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import path from 'path';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(() => ({
     plugins: [
         tailwindcss(),
         vue({
@@ -38,4 +38,4 @@ export default defineConfig({
             },
         },
     },
-});
+}));

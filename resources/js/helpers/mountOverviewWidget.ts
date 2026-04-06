@@ -1,4 +1,5 @@
 import tailwindStyles from '@/../css/shadow.css?inline';
+import { configureAxios } from '@/helpers/apiConfig';
 import isSidebarOpen from '@/helpers/isSidebarOpen';
 import tailwindFontSizeOverrides from '@/helpers/tailwindFontSizeOverrides';
 import OverviewWidget from '@/layouts/OverviewWidget.vue';
@@ -6,6 +7,9 @@ import { ChromeMessage } from '@/types/messages';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import { ZiggyVue } from 'ziggy-js';
+
+// Configure axios with API key header for content script API calls
+configureAxios();
 
 const containerId = 'clario-container';
 

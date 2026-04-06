@@ -1,3 +1,4 @@
+import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
 
 export default async function getOverview(
@@ -10,10 +11,7 @@ export default async function getOverview(
     try {
         response = await fetch(route('overview'), {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'text/event-stream',
-            },
+            headers: getApiHeaders({ Accept: 'text/event-stream' }),
             body: JSON.stringify({ content }),
         });
     } catch (e) {

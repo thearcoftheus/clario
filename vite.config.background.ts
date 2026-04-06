@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import path from 'path';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(() => ({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './resources/js'),
@@ -25,4 +25,4 @@ export default defineConfig({
             },
         },
     },
-});
+}));

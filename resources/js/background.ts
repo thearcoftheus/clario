@@ -1,9 +1,13 @@
+import { configureAxios } from '@/helpers/apiConfig';
 import chromeMessage from '@/helpers/chromeMessage';
 import getOverview from '@/helpers/getOverview';
 import { getReadability } from '@/helpers/getReadability';
 import initCsrf from '@/helpers/initCsrf';
 import openSidebar from '@/helpers/openSidebar';
 import { ChromeMessage, CmOverviewError, CmOverviewResponse } from '@/types/messages';
+
+// Configure axios with API key for background script API calls
+configureAxios();
 
 initCsrf();
 

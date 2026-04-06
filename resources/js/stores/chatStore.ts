@@ -1,3 +1,4 @@
+import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
@@ -55,10 +56,7 @@ export const useChatStore = defineStore('chatstore', function () {
         try {
             response = await fetch(route('chat'), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'text/event-stream',
-                },
+                headers: getApiHeaders({ Accept: 'text/event-stream' }),
                 body: JSON.stringify({
                     content: historyItems.value[0].content,
                     messages: chatMessages.value.slice(0, -1),

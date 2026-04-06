@@ -3,6 +3,8 @@
     "type": "module",
     "scripts": {
         "build": "node build.js",
+        "build:local": "node build.js",
+        "build:production": "node build.js --production",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
         "lint": "eslint . --fix"
