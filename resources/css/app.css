@@ -58,6 +58,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Clario widget colors */
+  --color-widget: #4C4C4C;
+  --color-widget-expanded: #FFFFFF;
+  --color-purple: #5C2B85;
+  --color-purple-light: #D8CCE2;
+  --color-gray-light: #E8E8E8;
 }
 
 /*

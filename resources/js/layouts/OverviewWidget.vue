@@ -1,6 +1,6 @@
 <template>
     <div v-if="showWidget" class="p-2">
-        <div class="bg-background border-border relative rounded-md border p-3 shadow-md/25">
+        <div class="bg-widget text-white border-border relative rounded-md border p-3 shadow-md/25">
             <button
                 variant="outline"
                 @click="close"
@@ -16,7 +16,7 @@
                     Content reading level
                     <div
                         v-if="loadingReadingLevel"
-                        class="size-4 animate-spin rounded-full border-2 border-solid border-black border-t-transparent"
+                        class="size-4 animate-spin rounded-full border-2 border-solid border-white border-t-transparent"
                     />
                     <span v-else-if="readability" class="rounded-xs p-2 font-bold" :class="color">
                         {{ readingLevel }}

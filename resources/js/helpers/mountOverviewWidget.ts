@@ -20,7 +20,9 @@ async function createContainer(): Promise<HTMLDivElement> {
 
     container.style.position = 'fixed';
     container.style.bottom = 'calc(1rem * var(--tw-multiplier, 1))';
-    container.style.right = 'calc(1rem * var(--tw-multiplier, 1))';
+    container.style.left = '50%';
+    container.style.transform = 'translateX(-50%)';
+    container.style.width = '90vw';
     container.style.zIndex = '2147483647';
     container.style.transition = 'opacity 0.2s';
 
