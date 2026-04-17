@@ -7,6 +7,7 @@ use App\Http\Requests\ChatRequest;
 use App\Http\Requests\NarrationRequest;
 use App\Http\Requests\TranslateRequest;
 use App\Services\ChatAgent;
+use App\Services\HeadlineAgent;
 use App\Services\NarrationService;
 use App\Services\OverviewAgent;
 use App\Services\Readability;
@@ -42,6 +43,32 @@ class AiController extends Controller {
                 $request->validated('content')
             )->asStream()
         );
+    }
+
+    public function headline(TranslateRequest $request, HeadlineAgent $headlineAgent) {
+        $response = $headlineAgent->getHeadline(
+            $request->validated('content'),
+            new Settings($request->validated('settings'))
+        )->asText();
+
+        // Strip markdown code fences if Gemini wraps the JSON
+        $text = trim($response->text);
+        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
+        $text = preg_replace('/\s*```$/', '', $text);
+
+        $json = json_decode($text, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return response()->json([
+                'title' => null,
+                'summary' => null,
+            ]);
+        }
+
+        return response()->json([
+            'title' => $json['title'] ?? null,
+            'summary' => $json['summary'] ?? null,
+        ]);
     }
 
     public function translate(TranslateRequest $request, SummaryAgent $textSimplifier) {

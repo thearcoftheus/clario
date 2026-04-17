@@ -10,6 +10,11 @@ export type HistoryItem = {
     name: string;
     url: string;
     content: string;
+    image?: string;
+    description?: string;
+    aiTitle?: string;
+    aiSummary?: string;
+    isHeadlineLoading: boolean;
     simplifiedContent: string;
     isStreaming: boolean;
     isFetching: boolean;
@@ -17,7 +22,7 @@ export type HistoryItem = {
     formattedDate: string;
 };
 
-export type NewHistoryItem = Pick<HistoryItem, 'name' | 'url' | 'content'>;
+export type NewHistoryItem = Pick<HistoryItem, 'name' | 'url' | 'content' | 'image' | 'description'>;
 
 export const useHistoryStore = defineStore('store', function () {
     const historyItems = ref<HistoryItem[]>([]);
@@ -30,6 +35,9 @@ export const useHistoryStore = defineStore('store', function () {
 
         historyItems.value.unshift({
             ...item,
+            aiTitle: undefined,
+            aiSummary: undefined,
+            isHeadlineLoading: true,
             simplifiedContent: '',
             isStreaming: false,
             isFetching: true,

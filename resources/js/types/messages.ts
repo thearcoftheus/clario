@@ -27,6 +27,8 @@ export type CmPageLoaded = {
     title: string;
     url: string;
     content: string;
+    image?: string;
+    description?: string;
 };
 
 export type CmSidebarState = {

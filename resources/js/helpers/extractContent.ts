@@ -31,6 +31,20 @@ function extractContentFrom(elm: HTMLElement): string | null {
     return clone.innerHTML;
 }
 
+export function extractPageMetadata(): { image?: string; description?: string } {
+    const image =
+        document.querySelector<HTMLMetaElement>('meta[property="og:image"]')?.content ||
+        document.querySelector<HTMLMetaElement>('meta[name="twitter:image"]')?.content ||
+        undefined;
+
+    const description =
+        document.querySelector<HTMLMetaElement>('meta[property="og:description"]')?.content ||
+        document.querySelector<HTMLMetaElement>('meta[name="description"]')?.content ||
+        undefined;
+
+    return { image, description };
+}
+
 export default function extractMainContent(): string {
     const tag = (selector: string) => [selector, `.${selector}`, `#${selector}`];
     const id = (selector: string) => [`.${selector}`, `#${selector}`];

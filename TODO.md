@@ -12,6 +12,18 @@
   - Option 2: Truncate with warning - limit to ~4500 bytes, show warning if truncated (quick fix)
   - Option 3: Use Google's Long Audio API - async processing, requires Google Cloud Storage setup (complex)
 
+## Sidebar — Phase 2 Redesign
+- [ ] Implement internal pane designs (Easy Read, Listen, Ask, Watch)
+- [ ] Wire up footer links (Help, About, Advanced Settings)
+
+## Performance — Sidebar
+- [ ] Defer the `/api/translate` (summary generation) call until the user actually clicks a card. Currently `HistoryItemStream` fires the AI call immediately when the sidebar opens, even if the user only wants Chat or Listen. Could lazy-load per pane, or at least delay until "Easy Read" is tapped. Tradeoff: pre-fetching means the summary is ready instantly when they do click it.
+
+## Nice to Have — Sidebar
+- [x] Use AI to extract the real article headline instead of relying on `document.title` — implemented via `HeadlineAgent` + `POST /api/headline`
+- [x] Use AI to generate a one-sentence summary for the "What You're Learning About" card — implemented via same `HeadlineAgent` endpoint (returns both title + summary)
+- [ ] Fallback image for the article card when `og:image` is not available
+
 ## Feature Enhancements
 - [ ] Add pause/resume functionality for video avatars (D-ID and Simli)
 - [ ] Add replay functionality for Simli avatar - cache generated audio so user can replay without regenerating speech and reconnecting

@@ -49,6 +49,8 @@ function getPageContent(tabId: number, retry: number = 3) {
                 name: response.title,
                 url: response.url,
                 content: response.content,
+                image: response.image,
+                description: response.description,
             });
 
             isExtractingContent.value = false;
@@ -68,6 +70,8 @@ export default function initSidebarListeners() {
             name: message.title,
             url: message.url,
             content: message.content,
+            image: message.image,
+            description: message.description,
         });
     });
 

@@ -1,5 +1,5 @@
 import chromeMessage from '@/helpers/chromeMessage';
-import extractMainContent from '@/helpers/extractContent';
+import extractMainContent, { extractPageMetadata } from '@/helpers/extractContent';
 import { mountOverviewWidget } from '@/helpers/mountOverviewWidget';
 import onReady from '@/helpers/onReady';
 import { ChromeMessage } from '@/types/messages';
@@ -7,20 +7,24 @@ import { ChromeMessage } from '@/types/messages';
 chrome.runtime.onMessage.addListener((message: ChromeMessage, sender, sendResponse) => {
     if (message.action !== 'extractContent') return;
 
+    const metadata = extractPageMetadata();
     sendResponse({
         title: document.title,
         url: location.href,
         content: extractMainContent(),
+        ...metadata,
     });
 });
 
 function pageLoaded() {
+    const metadata = extractPageMetadata();
     chrome.runtime.sendMessage(
         chromeMessage({
             action: 'pageLoaded',
             title: document.title,
             url: location.href,
             content: extractMainContent(),
+            ...metadata,
         }),
     );
 }

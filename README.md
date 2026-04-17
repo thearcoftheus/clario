@@ -4,8 +4,8 @@ A Chrome browser extension that provides AI-powered web content analysis and enh
 
 ## Features
 
-- **Content Reading Level Analysis**: Automatically analyzes and displays the reading difficulty level of web pages (Easy, Moderate, Challenging, Advanced)
-- **Content Overview**: Generate AI-powered summaries of web page content
+- **Content Overview** *(orphaned — not currently wired into the UI)*: Generates a bullet-point AI summary of page content via the OverviewAgent. The backend service and API endpoint still exist and could be reintroduced as a quick-glance summary in the toolbar or sidebar.
+- **Content Reading Level Analysis** *(orphaned — not currently wired into the UI)*: Computes Flesch-Kincaid reading grade for page text. The backend service and API endpoint still exist and could be reintroduced in the toolbar or sidebar in the future.
 - **Side Panel Interface**: Access detailed analysis through a persistent browser sidebar
 
 ## Tech Stack
@@ -189,15 +189,6 @@ The extension will include the API key, and the server will validate it on every
 
 ## Troubleshooting
 
-### Extension spinner keeps spinning
-
-If the content reading level spinner never stops:
-
-1. Make sure the Laravel server is running (`php artisan serve`) or you're connected to a remote server
-2. Check that `VITE_API_URL` in `.env` points to your server (e.g., `http://localhost:8000` for local)
-3. Rebuild the extension (`npm run build`)
-4. Reload the extension in Chrome
-
 ### Wrong Node version
 
 If you get Node version errors:
@@ -209,8 +200,8 @@ nvm use      # Switch to the correct version
 
 ## API Endpoints
 
-- `POST /api/readability` - Analyze content reading level
-- `POST /api/overview` - Generate content overview
+- `POST /api/readability` - Analyze content reading level *(orphaned — not currently called by the UI)*
+- `POST /api/overview` - Generate content overview *(orphaned — not currently called by the UI)*
 - `POST /api/translate` - Translate content
 - `POST /api/chat` - Chat with AI about content
 
