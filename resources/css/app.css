@@ -197,10 +197,10 @@
 .markdown-content {
     p, hr, ul, ol {
         &:not(:first-child) {
-            margin-top: 1.4em;
+            margin-top: 0.8em;
         }
         &:not(:last-child) {
-            margin-bottom: 1.4em;
+            margin-bottom: 0.8em;
         }
     }
 
@@ -224,7 +224,7 @@
     }
 
     h1 {
-        font-size: 1.8rem;
+        font-size: 1.3rem;
     }
     h2 {
         font-size: 1.5rem;

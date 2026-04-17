@@ -27,7 +27,7 @@
                     </h2>
                     <div v-if="currentItem" class="overflow-hidden rounded-xl border-[0.5px] border-card-border bg-white">
                         <!-- Loading state -->
-                        <div v-if="currentItem.isHeadlineLoading" class="flex h-[100px] items-center justify-center">
+                        <div v-if="currentItem.isHeadlineLoading" class="flex min-h-[80px] items-center justify-center">
                             <Loader2 class="size-6 animate-spin text-purple" />
                         </div>
                         <!-- Content (fades in) -->
@@ -37,7 +37,7 @@
                                     v-if="currentItem.image"
                                     :src="currentItem.image"
                                     alt=""
-                                    class="h-[100px] w-[80px] shrink-0 object-cover"
+                                    class="w-[80px] shrink-0 self-stretch object-cover"
                                 />
                                 <div class="flex flex-col justify-center gap-1 p-3">
                                     <p class="text-base font-bold leading-tight tracking-tight text-black">
@@ -102,7 +102,7 @@
                             <!-- Ask -->
                             <button
                                 class="flex flex-1 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-card-border bg-purple-light p-3 text-left"
-                                @click="activeView = 'chat'"
+                                @click="showChatModal = true"
                             >
                                 <div class="mb-2 flex size-[36px] items-center justify-center rounded-xl bg-sidebar-bg">
                                     <img :src="personRaisedHandIcon" alt="" class="size-[36px]" />
@@ -129,6 +129,7 @@
 
             <!-- PANE VIEWS -->
             <EasyReadPane v-else-if="activeView === 'summary'" class="h-full" />
+            <ListenPane v-else-if="activeView === 'narrate'" class="h-full" />
 
             <!-- Other panes (not yet redesigned) -->
             <template v-else>
@@ -141,12 +142,7 @@
                         <span class="text-base font-medium">Back</span>
                     </button>
 
-                    <Chat v-if="activeView === 'chat'" />
-                    <template v-else-if="activeView === 'narrate'">
-                        <NarrateAdvanced v-if="settings.voiceOption === 'Advanced'" />
-                        <Narrate v-else />
-                    </template>
-                    <AvatarPane v-else-if="activeView === 'avatar'" />
+                    <AvatarPane v-if="activeView === 'avatar'" />
                 </div>
             </template>
         </div>
@@ -155,11 +151,15 @@
         <footer class="flex shrink-0 items-center justify-between bg-white px-4 py-2">
             <a href="#" class="text-sm text-black underline">Help</a>
             <a href="#" class="text-sm text-black underline">About</a>
-            <div class="flex items-center gap-1">
+            <button class="flex cursor-pointer items-center gap-1" @click="settingsDialog?.open()">
                 <img :src="settingsIcon" alt="" class="size-[14px]" />
-                <a href="#" class="text-sm text-black underline">Advanced Settings</a>
-            </div>
+                <span class="text-sm text-black underline">Advanced Settings</span>
+            </button>
         </footer>
+
+        <SettingsDialog ref="settingsDialog" />
+
+        <ChatModal :open="showChatModal" @close="showChatModal = false" />
     </div>
 
     <HistoryItemHeadline v-for="item in historyItems" :key="'headline-' + item.date.unix()" :item="item" />
@@ -170,12 +170,12 @@
 
 <script lang="ts" setup>
 import AvatarPane from '@/components/AvatarPane.vue';
-import Chat from '@/components/Chat.vue';
+import ChatModal from '@/components/ChatModal.vue';
 import EasyReadPane from '@/components/EasyReadPane.vue';
+import SettingsDialog from '@/components/SettingsDialog.vue';
 import HistoryItemHeadline from '@/components/HistoryItemHeadline.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
-import Narrate from '@/components/Narrate.vue';
-import NarrateAdvanced from '@/components/NarrateAdvanced.vue';
+import ListenPane from '@/components/ListenPane.vue';
 import { Toaster } from '@/components/ui/sonner';
 import { NavigationKey, type View } from '@/composables/useNavigation';
 import { useAppStateStore } from '@/stores/appStateStore';
@@ -192,9 +192,17 @@ import animatedImagesIcon from '@/../icons/sidebar/animated-images.svg';
 import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const activeView = ref<View>('home');
+const showChatModal = ref(false);
 
 provide(NavigationKey, {
-    setActiveView: (view: View) => { activeView.value = view; },
+    setActiveView: (view: View) => {
+        if (view === 'chat') {
+            showChatModal.value = true;
+        } else {
+            showChatModal.value = false;
+            activeView.value = view;
+        }
+    },
 });
 
 const appStateStore = useAppStateStore();
@@ -206,6 +214,8 @@ const { historyItems } = storeToRefs(historyStore);
 function closeSidebar() {
     window.close();
 }
+
+const settingsDialog = ref<InstanceType<typeof SettingsDialog> | null>(null);
 
 const currentItem = computed(() => historyItems.value[0] ?? null);
 </script>

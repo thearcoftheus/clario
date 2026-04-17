@@ -99,30 +99,20 @@ class AiController extends Controller {
         );
     }
 
-    public function narrate(NarrationRequest $request, NarrationService $narrationService) {
-        $text = $request->validated('content');
+    private function stripMarkdown(string $text): string {
+        $text = preg_replace('/^#{1,6}\s*/m', '', $text);
+        $text = preg_replace('/\*\*(.+?)\*\*/s', '$1', $text);
+        $text = preg_replace('/__(.+?)__/s', '$1', $text);
+        $text = preg_replace('/\*(.+?)\*/s', '$1', $text);
+        $text = preg_replace('/_(.+?)_/s', '$1', $text);
+        $text = preg_replace('/`(.+?)`/', '$1', $text);
+        $text = preg_replace('/\[(.+?)\]\(.+?\)/', '$1', $text);
+        $text = preg_replace('/^[\*\-\+]\s+/m', '', $text);
+        $text = preg_replace('/^\d+\.\s+/m', '', $text);
+        return html_entity_decode(strip_tags($text));
+    }
 
-        // Strip markdown formatting from text
-        $plainText = $text;
-        // Remove headings (## Heading)
-        $plainText = preg_replace('/^#{1,6}\s*/m', '', $plainText);
-        // Remove bold (**text** or __text__)
-        $plainText = preg_replace('/\*\*(.+?)\*\*/s', '$1', $plainText);
-        $plainText = preg_replace('/__(.+?)__/s', '$1', $plainText);
-        // Remove italic (*text* or _text_)
-        $plainText = preg_replace('/\*(.+?)\*/s', '$1', $plainText);
-        $plainText = preg_replace('/_(.+?)_/s', '$1', $plainText);
-        // Remove inline code (`code`)
-        $plainText = preg_replace('/`(.+?)`/', '$1', $plainText);
-        // Remove links [text](url) -> text
-        $plainText = preg_replace('/\[(.+?)\]\(.+?\)/', '$1', $plainText);
-        // Remove bullet points
-        $plainText = preg_replace('/^[\*\-\+]\s+/m', '', $plainText);
-        // Remove numbered lists (1. item)
-        $plainText = preg_replace('/^\d+\.\s+/m', '', $plainText);
-        // Strip any remaining HTML and decode entities
-        $plainText = html_entity_decode(strip_tags($plainText));
-
+    private function buildNarrationOptions(NarrationRequest $request): array {
         $options = [
             'voice' => $request->validated('voice'),
             'language' => $request->validated('language', 'en-US'),
@@ -130,9 +120,32 @@ class AiController extends Controller {
             'pitch' => $request->validated('pitch'),
             'gender' => $request->validated('gender'),
         ];
+        return array_filter($options, fn($value) => $value !== null);
+    }
 
-        // Remove null values
-        $options = array_filter($options, fn($value) => $value !== null);
+    public function narrateSync(NarrationRequest $request, NarrationService $narrationService) {
+        $plainText = $this->stripMarkdown($request->validated('content'));
+        $options = $this->buildNarrationOptions($request);
+
+        try {
+            $result = $narrationService->generateAudioWithTimepoints($plainText, $options);
+
+            return response()->json([
+                'audio' => $result['audioContent'],
+                'timepoints' => $result['timepoints'],
+                'text' => $result['text'],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to generate audio',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function narrate(NarrationRequest $request, NarrationService $narrationService) {
+        $plainText = $this->stripMarkdown($request->validated('content'));
+        $options = $this->buildNarrationOptions($request);
 
         try {
             $audioContent = $narrationService->generateAudio($plainText, $options);

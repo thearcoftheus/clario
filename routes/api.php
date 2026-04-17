@@ -18,6 +18,7 @@ Route::middleware([ValidateApiKey::class])->group(function () {
     Route::post('/translate', [AiController::class, 'translate'])->name('translate');
     Route::post('/chat', [AiController::class, 'chat'])->name('chat');
     Route::post('/narrate', [AiController::class, 'narrate'])->name('narrate');
+    Route::post('/narrate-sync', [AiController::class, 'narrateSync'])->name('narrate-sync');
 
     // Avatar video generation (D-ID)
     Route::post('/avatar/script', [AvatarController::class, 'prepareScript'])->name('avatar.script');

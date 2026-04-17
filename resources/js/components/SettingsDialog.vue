@@ -1,10 +1,5 @@
 <template>
     <Dialog v-model:open="isOpen">
-        <DialogTrigger as-child>
-            <Button variant="ghost" size="icon" class="h-8 w-8">
-                <Settings class="h-5 w-5" />
-            </Button>
-        </DialogTrigger>
         <DialogContent class="max-h-[85vh] flex flex-col">
             <DialogHeader>
                 <DialogTitle>Settings</DialogTitle>
@@ -125,6 +120,8 @@ interface NetworkInfo {
 }
 
 const isOpen = ref(false);
+
+defineExpose({ open: () => { isOpen.value = true; } });
 
 const networkInfo = ref<NetworkInfo | null>(null);
 

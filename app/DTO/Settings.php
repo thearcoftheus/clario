@@ -14,7 +14,7 @@ readonly class Settings {
         'summaryLength' => SummaryLength::MEDIUM,
         'internetSpeed' => InternetSpeed::MEDIUM,
         'voiceOption' => VoiceOption::BASIC,
-        'emoji' => TRUE,
+        'emoji' => FALSE,
     ];
 
     public SimplificationLevel $level;

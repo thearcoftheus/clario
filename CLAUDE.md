@@ -74,6 +74,7 @@ All routes require API key authentication via `ValidateApiKey` middleware:
 - `POST /api/translate` - Simplify text (streaming)
 - `POST /api/chat` - Chat with AI (streaming)
 - `POST /api/narrate` - Text-to-speech audio
+- `POST /api/narrate-sync` - Text-to-speech with word-level timepoints for synchronized highlighting (JSON response)
 - `POST /api/avatar/*` - Avatar video generation (D-ID and Simli)
 
 ### UI Components
