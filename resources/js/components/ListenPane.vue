@@ -35,7 +35,7 @@
                         :disabled="isGenerating || !hasAudio"
                         @click="togglePlayPause"
                     >
-                        <Loader2 v-if="isGenerating" class="size-5 animate-spin text-purple" />
+                        <Loader2 v-if="isGenerating && !hasAudio" class="size-5 animate-spin text-purple" />
                         <Pause v-else-if="isPlaying" class="size-5 text-purple" />
                         <Play v-else class="size-5 text-purple" />
                     </button>
@@ -84,20 +84,9 @@
                 </div>
 
                 <!-- Waiting for content -->
-                <div v-else-if="!currentItem?.simplifiedContent" class="flex items-center justify-center py-8">
+                <div v-else class="flex items-center justify-center py-8">
                     <Loader2 class="size-6 animate-spin text-purple" />
                     <span class="ml-2 text-sm text-gray-500">Waiting for summary...</span>
-                </div>
-
-                <!-- Ready to generate -->
-                <div v-else class="flex flex-col items-center justify-center py-8 text-center">
-                    <p class="mb-3 text-sm text-gray-500">Ready to listen to this article</p>
-                    <button
-                        class="cursor-pointer rounded-lg bg-purple px-5 py-2 text-sm font-bold text-white"
-                        @click="startListening"
-                    >
-                        Generate Audio
-                    </button>
                 </div>
             </div>
         </div>
@@ -217,9 +206,15 @@ function onProgressClick(e: MouseEvent) {
     seekTo(Math.max(0, Math.min(1, fraction)));
 }
 
+function isSummaryReady() {
+    return currentItem.value?.simplifiedContent &&
+        !currentItem.value?.isFetching &&
+        !currentItem.value?.isStreaming;
+}
+
 function startListening() {
-    if (currentItem.value?.simplifiedContent) {
-        generate(currentItem.value.simplifiedContent);
+    if (isSummaryReady()) {
+        generate(currentItem.value!.simplifiedContent, currentItem.value!.url);
     }
 }
 
@@ -237,18 +232,18 @@ watch(currentWordIndex, (idx) => {
     }
 });
 
-// Auto-generate when summary is ready
+// Auto-generate on mount (but don't auto-play — user must click play).
+// If summary isn't ready yet, watch for it and generate when it arrives.
 onMounted(() => {
-    if (currentItem.value?.simplifiedContent && !hasAudio.value) {
+    if (isSummaryReady()) {
         startListening();
     }
 });
 
-// If summary arrives after mount (was still streaming)
 watch(
-    () => currentItem.value?.isFetching,
-    (fetching, wasFetching) => {
-        if (wasFetching && !fetching && !hasAudio.value && currentItem.value?.simplifiedContent) {
+    () => currentItem.value?.isStreaming,
+    (streaming, wasStreaming) => {
+        if (wasStreaming && !streaming && !hasAudio.value && isSummaryReady()) {
             startListening();
         }
     },

@@ -58,36 +58,6 @@
                         </div>
                     </div>
 
-                    <div class="grid gap-3">
-                        <Label for="voiceOption">Voice option</Label>
-                        <Slider v-model="voiceOption" :min="0" :max="VoiceOptions.length - 1" :step="1" id="voiceOption" />
-                        <div class="text-muted-foreground flex justify-between">
-                            <div
-                                v-for="(option, i) in VoiceOptions"
-                                :key="option"
-                                class="flex-1"
-                                :class="i == 0 ? 'text-left' : 'text-right'"
-                            >
-                                {{ option }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid gap-3">
-                        <Label for="videoProvider">Video avatar provider</Label>
-                        <Slider v-model="videoProvider" :min="0" :max="VideoProviders.length - 1" :step="1" id="videoProvider" />
-                        <div class="text-muted-foreground flex justify-between">
-                            <div
-                                v-for="(provider, i) in VideoProviders"
-                                :key="provider"
-                                class="flex-1"
-                                :class="i == 0 ? 'text-left' : 'text-right'"
-                            >
-                                {{ provider }}
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="flex items-center space-x-2">
                         <Checkbox id="emoji" v-model="formValues.emoji" />
                         <Label for="emoji">Use emoji?</Label>

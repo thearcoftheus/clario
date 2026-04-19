@@ -17,7 +17,7 @@
         </header>
 
         <!-- Main content area -->
-        <div class="min-h-0 flex-1" :class="activeView === 'home' ? 'overflow-y-auto' : ''">
+        <div class="min-h-0 flex-1 overflow-hidden" :class="activeView === 'home' ? 'overflow-y-auto' : ''">
             <!-- HOME VIEW -->
             <template v-if="activeView === 'home'">
                 <!-- What You're Learning About -->
@@ -130,21 +130,7 @@
             <!-- PANE VIEWS -->
             <EasyReadPane v-else-if="activeView === 'summary'" class="h-full" />
             <ListenPane v-else-if="activeView === 'narrate'" class="h-full" />
-
-            <!-- Other panes (not yet redesigned) -->
-            <template v-else>
-                <div class="p-4">
-                    <button
-                        class="mb-4 flex cursor-pointer items-center gap-1 text-purple hover:underline"
-                        @click="activeView = 'home'"
-                    >
-                        <ArrowLeft class="size-5" />
-                        <span class="text-base font-medium">Back</span>
-                    </button>
-
-                    <AvatarPane v-if="activeView === 'avatar'" />
-                </div>
-            </template>
+            <WatchPane v-else-if="activeView === 'avatar'" class="h-full" />
         </div>
 
         <!-- Footer -->
@@ -169,18 +155,18 @@
 </template>
 
 <script lang="ts" setup>
-import AvatarPane from '@/components/AvatarPane.vue';
 import ChatModal from '@/components/ChatModal.vue';
 import EasyReadPane from '@/components/EasyReadPane.vue';
 import SettingsDialog from '@/components/SettingsDialog.vue';
 import HistoryItemHeadline from '@/components/HistoryItemHeadline.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
 import ListenPane from '@/components/ListenPane.vue';
+import WatchPane from '@/components/WatchPane.vue';
 import { Toaster } from '@/components/ui/sonner';
 import { NavigationKey, type View } from '@/composables/useNavigation';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
-import { ArrowLeft, ChevronDown, Loader2 } from 'lucide-vue-next';
+import { ChevronDown, Loader2 } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, provide, ref } from 'vue';
 import 'vue-sonner/style.css';

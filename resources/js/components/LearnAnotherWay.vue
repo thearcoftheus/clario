@@ -5,6 +5,17 @@
         </h2>
         <div class="flex gap-2">
             <button
+                v-if="exclude !== 'summary'"
+                class="flex flex-1 cursor-pointer items-center overflow-hidden rounded-lg border-[0.5px] border-card-border bg-gray-light px-2 py-1.5"
+                @click="nav.setActiveView('summary')"
+            >
+                <div class="mr-1.5 flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-sidebar-bg">
+                    <img :src="bookIcon" alt="" class="size-[24px]" />
+                </div>
+                <span class="text-sm font-bold leading-tight tracking-tight text-purple">Easy Read</span>
+            </button>
+
+            <button
                 v-if="exclude !== 'narrate'"
                 class="flex flex-1 cursor-pointer items-center overflow-hidden rounded-lg border-[0.5px] border-card-border bg-gray-light px-2 py-1.5"
                 @click="nav.setActiveView('narrate')"
@@ -43,6 +54,7 @@
 <script lang="ts" setup>
 import { useNavigation, type View } from '@/composables/useNavigation';
 
+import bookIcon from '@/../icons/sidebar/book.svg';
 import earSoundIcon from '@/../icons/sidebar/ear-sound.svg';
 import personRaisedHandIcon from '@/../icons/sidebar/person-raised-hand.svg';
 import animatedImagesIcon from '@/../icons/sidebar/animated-images.svg';

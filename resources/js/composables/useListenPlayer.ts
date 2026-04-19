@@ -1,5 +1,6 @@
 import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
+import { useListenStore } from '@/stores/listenStore';
 import axios from 'axios';
 import { onBeforeUnmount, ref } from 'vue';
 
@@ -9,6 +10,8 @@ interface Timepoint {
 }
 
 export function useListenPlayer() {
+    const listenStore = useListenStore();
+
     const isGenerating = ref(false);
     const isPlaying = ref(false);
     const isPaused = ref(false);
@@ -28,18 +31,15 @@ export function useListenPlayer() {
     let blobUrl: string | null = null;
     let animFrameId: number | null = null;
     let estimatedTimings: number[] | null = null;
+    let disposed = false;
 
     /**
      * Build estimated word start times weighted by character length.
-     * Longer words get proportionally more time. Punctuation at end of words
-     * adds a small pause to simulate natural speech rhythm.
      */
     function buildEstimatedTimings(wordList: string[], totalDuration: number): number[] {
         const weights = wordList.map(word => {
             let w = Math.max(word.length, 1);
-            // Add pause weight for sentence-ending punctuation
             if (/[.!?]$/.test(word)) w += 3;
-            // Add small pause for commas, semicolons
             else if (/[,;:]$/.test(word)) w += 1.5;
             return w;
         });
@@ -56,7 +56,98 @@ export function useListenPlayer() {
         return timings;
     }
 
-    async function generate(content: string, voice: string = 'en-US-Neural2-C') {
+    /**
+     * Create an HTMLAudioElement from base64 data and wire up event listeners.
+     * Optionally seek to a starting position.
+     */
+    function createAudioElement(base64Audio: string, startAt: number = 0) {
+        const binaryString = atob(base64Audio);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'audio/mpeg' });
+
+        // Clean up old audio element
+        if (audioElement) {
+            audioElement.pause();
+            audioElement.removeAttribute('src');
+        }
+        if (blobUrl) {
+            URL.revokeObjectURL(blobUrl);
+        }
+
+        blobUrl = URL.createObjectURL(blob);
+        audioElement = new Audio(blobUrl);
+        audioElement.playbackRate = speed.value;
+
+        audioElement.addEventListener('loadedmetadata', () => {
+            if (!audioElement) return;
+            duration.value = audioElement.duration;
+            if (startAt > 0 && startAt < audioElement.duration) {
+                audioElement.currentTime = startAt;
+                currentTime.value = startAt;
+                progress.value = (startAt / audioElement.duration) * 100;
+                // Highlight the correct word for the restored position
+                updateWordIndexForTime(startAt);
+            }
+        });
+
+        audioElement.addEventListener('timeupdate', () => {
+            if (!audioElement) return;
+            currentTime.value = audioElement.currentTime;
+            if (duration.value > 0) {
+                progress.value = (audioElement.currentTime / duration.value) * 100;
+            }
+        });
+
+        audioElement.addEventListener('play', () => {
+            isPlaying.value = true;
+            isPaused.value = false;
+            startHighlightLoop();
+        });
+
+        audioElement.addEventListener('pause', () => {
+            isPlaying.value = false;
+            isPaused.value = true;
+            stopHighlightLoop();
+        });
+
+        audioElement.addEventListener('ended', () => {
+            isPlaying.value = false;
+            isPaused.value = false;
+            currentWordIndex.value = -1;
+            stopHighlightLoop();
+        });
+
+        hasAudio.value = true;
+    }
+
+    /**
+     * Try to restore from the listen store (cached audio from a previous visit).
+     * Returns true if restored successfully.
+     */
+    function restoreFromStore(articleUrl: string): boolean {
+        if (
+            listenStore.audioBase64 &&
+            listenStore.generatedForUrl === articleUrl &&
+            listenStore.words.length > 0
+        ) {
+            words.value = listenStore.words;
+            timepoints.value = listenStore.timepoints;
+            estimatedTimings = null;
+            createAudioElement(listenStore.audioBase64, listenStore.lastPosition);
+            return true;
+        }
+        return false;
+    }
+
+    async function generate(content: string, articleUrl: string, voice: string = 'en-US-Neural2-C') {
+        // Try restoring from store first
+        if (restoreFromStore(articleUrl)) {
+            return;
+        }
+
         if (isGenerating.value) return;
 
         isGenerating.value = true;
@@ -69,114 +160,71 @@ export function useListenPlayer() {
                 { headers: getApiHeaders() },
             );
 
+            if (disposed) return;
+
             const data = response.data;
 
-            // Store words and timepoints
             words.value = data.text.split(/\s+/).filter((w: string) => w.length > 0);
             timepoints.value = data.timepoints || [];
-
-            // Convert base64 audio to blob
-            const binaryString = atob(data.audio);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const blob = new Blob([bytes], { type: 'audio/mpeg' });
-
-            // Clean up old audio and reset estimated timings
-            cleanup();
             estimatedTimings = null;
 
-            blobUrl = URL.createObjectURL(blob);
-            audioElement = new Audio(blobUrl);
-            audioElement.playbackRate = speed.value;
-
-            audioElement.addEventListener('loadedmetadata', () => {
-                duration.value = audioElement!.duration;
+            // Cache in the store for persistence across navigation
+            listenStore.cacheAudio({
+                audio: data.audio,
+                words: words.value,
+                timepoints: timepoints.value,
+                url: articleUrl,
             });
 
-            audioElement.addEventListener('timeupdate', () => {
-                currentTime.value = audioElement!.currentTime;
-                if (duration.value > 0) {
-                    progress.value = (audioElement!.currentTime / duration.value) * 100;
-                }
-            });
-
-            audioElement.addEventListener('play', () => {
-                isPlaying.value = true;
-                isPaused.value = false;
-                startHighlightLoop();
-            });
-
-            audioElement.addEventListener('pause', () => {
-                isPlaying.value = false;
-                isPaused.value = true;
-                stopHighlightLoop();
-            });
-
-            audioElement.addEventListener('ended', () => {
-                isPlaying.value = false;
-                isPaused.value = false;
-                currentWordIndex.value = -1;
-                stopHighlightLoop();
-            });
-
-            hasAudio.value = true;
-
-            // Auto-play
-            await audioElement.play();
+            createAudioElement(data.audio);
         } catch (e: any) {
+            if (disposed) return;
             console.error('Failed to generate audio:', e);
             error.value = e.response?.data?.message || 'Failed to generate audio';
         } finally {
-            isGenerating.value = false;
+            if (!disposed) isGenerating.value = false;
+        }
+    }
+
+    function updateWordIndexForTime(time: number) {
+        if (timepoints.value.length > 0) {
+            let lo = 0;
+            let hi = timepoints.value.length - 1;
+            let result = -1;
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                if (timepoints.value[mid].timeSeconds <= time) {
+                    result = mid;
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            currentWordIndex.value = result;
+        } else if (words.value.length > 0 && duration.value > 0) {
+            if (!estimatedTimings) {
+                estimatedTimings = buildEstimatedTimings(words.value, duration.value);
+            }
+            let lo = 0;
+            let hi = estimatedTimings.length - 1;
+            let result = -1;
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                if (estimatedTimings[mid] <= time) {
+                    result = mid;
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            currentWordIndex.value = result;
         }
     }
 
     function startHighlightLoop() {
         function tick() {
             if (!audioElement || !isPlaying.value) return;
-
-            const time = audioElement.currentTime;
-
-            if (timepoints.value.length > 0) {
-                // Binary search for the current word
-                let lo = 0;
-                let hi = timepoints.value.length - 1;
-                let result = -1;
-
-                while (lo <= hi) {
-                    const mid = (lo + hi) >> 1;
-                    if (timepoints.value[mid].timeSeconds <= time) {
-                        result = mid;
-                        lo = mid + 1;
-                    } else {
-                        hi = mid - 1;
-                    }
-                }
-
-                currentWordIndex.value = result;
-            } else if (words.value.length > 0 && duration.value > 0) {
-                // Fallback: estimate based on word character length (weighted distribution)
-                if (!estimatedTimings) {
-                    estimatedTimings = buildEstimatedTimings(words.value, duration.value);
-                }
-                // Binary search estimated timings
-                let lo2 = 0;
-                let hi2 = estimatedTimings.length - 1;
-                let result2 = -1;
-                while (lo2 <= hi2) {
-                    const mid2 = (lo2 + hi2) >> 1;
-                    if (estimatedTimings[mid2] <= time) {
-                        result2 = mid2;
-                        lo2 = mid2 + 1;
-                    } else {
-                        hi2 = mid2 - 1;
-                    }
-                }
-                currentWordIndex.value = result2;
-            }
-
+            updateWordIndexForTime(audioElement.currentTime);
             animFrameId = requestAnimationFrame(tick);
         }
 
@@ -224,6 +272,10 @@ export function useListenPlayer() {
 
     function cleanup() {
         stopHighlightLoop();
+        // Save position to store before destroying
+        if (audioElement && hasAudio.value) {
+            listenStore.savePosition(audioElement.currentTime, duration.value);
+        }
         if (audioElement) {
             audioElement.pause();
             audioElement.removeAttribute('src');
@@ -248,7 +300,10 @@ export function useListenPlayer() {
         return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
-    onBeforeUnmount(cleanup);
+    onBeforeUnmount(() => {
+        disposed = true;
+        cleanup();
+    });
 
     return {
         isGenerating,

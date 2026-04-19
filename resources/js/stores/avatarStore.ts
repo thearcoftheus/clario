@@ -40,9 +40,9 @@ export const useAvatarStore = defineStore('avatar', () => {
                 currentPageUrl.value = item.url;
             }
 
-            // When summary streaming completes, prepare the script
+            // When summary streaming completes, prepare the script (use AI title if available)
             if (!item.isFetching && !item.isStreaming && item.simplifiedContent && scriptStatus.value === 'idle') {
-                prepareScript(item.name, item.simplifiedContent);
+                prepareScript(item.aiTitle || item.name, item.simplifiedContent);
             }
         },
         { deep: true, immediate: true }
