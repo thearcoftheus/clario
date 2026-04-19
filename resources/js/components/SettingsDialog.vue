@@ -1,16 +1,21 @@
 <template>
     <Dialog v-model:open="isOpen">
-        <DialogContent class="max-h-[85vh] flex flex-col">
-            <DialogHeader>
-                <DialogTitle>Settings</DialogTitle>
-            </DialogHeader>
+        <DialogContent class="max-h-[85vh] flex flex-col bg-sidebar-bg border-card-border !rounded-xl !p-0 !gap-0">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-card-border bg-white px-5 py-4 rounded-t-xl">
+                <div class="flex items-center gap-2">
+                    <img :src="settingsIcon" alt="" class="size-5" />
+                    <span class="text-lg font-bold text-purple">Settings</span>
+                </div>
+            </div>
 
             <form @submit.prevent="onSubmit" class="flex flex-col overflow-hidden">
-                <div class="space-y-10 py-4 overflow-y-auto flex-1 pr-2">
-                    <div class="grid gap-3">
-                        <Label for="simplificationLevel">Reading level</Label>
-                        <Slider v-model="simplificationLevel" :min="0" :max="SimplificationLevels.length - 1" :step="1" id="simplificationLevel" />
-                        <div class="text-muted-foreground flex justify-between">
+                <div class="space-y-6 overflow-y-auto flex-1 px-5 py-5">
+                    <!-- Reading Level -->
+                    <div class="rounded-xl border border-card-border bg-white p-4">
+                        <label class="mb-3 block text-sm font-bold text-purple">Reading Level</label>
+                        <Slider v-model="simplificationLevel" :min="0" :max="SimplificationLevels.length - 1" :step="1" />
+                        <div class="mt-2 flex justify-between text-xs text-gray-500">
                             <div
                                 v-for="(level, i) in SimplificationLevels"
                                 :key="level"
@@ -22,10 +27,11 @@
                         </div>
                     </div>
 
-                    <div class="grid gap-3">
-                        <Label for="summaryLength">Summary length</Label>
-                        <Slider v-model="summaryLength" :min="0" :max="SummaryLengths.length - 1" :step="1" id="summaryLength" />
-                        <div class="text-muted-foreground flex justify-between">
+                    <!-- Summary Length -->
+                    <div class="rounded-xl border border-card-border bg-white p-4">
+                        <label class="mb-3 block text-sm font-bold text-purple">Summary Length</label>
+                        <Slider v-model="summaryLength" :min="0" :max="SummaryLengths.length - 1" :step="1" />
+                        <div class="mt-2 flex justify-between text-xs text-gray-500">
                             <div
                                 v-for="(length, i) in SummaryLengths"
                                 :key="length"
@@ -37,10 +43,11 @@
                         </div>
                     </div>
 
-                    <div class="grid gap-3">
-                        <Label for="internetSpeed">Internet speed</Label>
-                        <Slider v-model="internetSpeed" :min="0" :max="InternetSpeeds.length - 1" :step="1" id="internetSpeed" />
-                        <div class="text-muted-foreground flex justify-between">
+                    <!-- Internet Speed -->
+                    <div class="rounded-xl border border-card-border bg-white p-4">
+                        <label class="mb-3 block text-sm font-bold text-purple">Internet Speed</label>
+                        <Slider v-model="internetSpeed" :min="0" :max="InternetSpeeds.length - 1" :step="1" />
+                        <div class="mt-2 flex justify-between text-xs text-gray-500">
                             <div
                                 v-for="(speed, i) in InternetSpeeds"
                                 :key="speed"
@@ -50,38 +57,48 @@
                                 {{ speed }}
                             </div>
                         </div>
-                        <div v-if="networkInfo" class="text-muted-foreground text-sm">
-                            Detected: {{ networkInfo.downlink }} Mbps / {{ networkInfo.effectiveType }} effective type / {{ networkInfo.type }} connection type
-                        </div>
-                        <div v-else class="text-muted-foreground text-sm">
-                            Detected: Network info unavailable
-                        </div>
+                        <p class="mt-2 text-xs text-gray-400">
+                            <template v-if="networkInfo">
+                                Detected: {{ networkInfo.downlink }} Mbps / {{ networkInfo.effectiveType }}
+                            </template>
+                            <template v-else>
+                                Network info unavailable
+                            </template>
+                        </p>
                     </div>
 
-                    <div class="flex items-center space-x-2">
+                    <!-- Emoji Toggle -->
+                    <div class="flex items-center gap-3 rounded-xl border border-card-border bg-white p-4">
                         <Checkbox id="emoji" v-model="formValues.emoji" />
-                        <Label for="emoji">Use emoji?</Label>
+                        <label for="emoji" class="text-sm font-bold text-purple">Use emoji in summaries</label>
                     </div>
                 </div>
 
-                <DialogFooter class="mt-4">
-                    <Button type="submit">Save changes</Button>
-                </DialogFooter>
+                <!-- Footer -->
+                <div class="border-t border-card-border bg-white px-5 py-4 rounded-b-xl">
+                    <button
+                        type="submit"
+                        class="w-full cursor-pointer rounded-xl bg-purple py-2.5 text-sm font-bold text-white"
+                    >
+                        Save Changes
+                    </button>
+                </div>
             </form>
         </DialogContent>
     </Dialog>
 </template>
 
 <script lang="ts" setup>
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { InternetSpeeds, SimplificationLevels, SummaryLengths, VideoProviders, VoiceOptions, useAppStateStore } from '@/stores/appStateStore';
-import { CircleCheck, Settings } from 'lucide-vue-next';
+import { CircleCheck } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { h, onMounted, onUnmounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
+
+import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 interface NetworkInfo {
     downlink: number;
@@ -198,6 +215,6 @@ watch(videoProvider, () => {
 function onSubmit() {
     appState.updateSettings(formValues.value);
     isOpen.value = false;
-    toast(h('div', { class: 'flex items-center gap-2' }, [h(CircleCheck), 'Settings saved successfully.']));
+    toast(h('div', { class: 'flex items-center gap-2 text-purple font-bold' }, [h(CircleCheck, { class: 'size-4' }), 'Settings saved']));
 }
 </script>

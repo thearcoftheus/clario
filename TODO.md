@@ -39,13 +39,10 @@
 
 ## Analytics & Logging
 - [ ] **Usage analytics**: Track which panes users navigate to (Easy Read, Listen, Ask, Watch), how often, and which they avoid. Could log pane navigation events (view name + timestamp) to help understand user behavior and prioritize development.
-- [ ] **API response time logging**: Measure and log how long each backend operation takes end-to-end:
-  - (a) Headline + one-sentence summary (`/api/headline` → HeadlineAgent)
-  - (b) Simplified summary for Easy Read (`/api/translate` → SummaryAgent, streaming)
-  - (c) Audio generation for Listen (`/api/narrate-sync` → Google TTS, chunked)
-  - (d) Avatar video generation (`/api/avatar/*` → D-ID/Simli)
-  - Could log to Laravel logs initially, then later pipe to a dashboard or analytics service.
-- [ ] **Metrics report**: Create a script (artisan command or standalone) that parses the logs and generates a simple HTML report for the team — pane usage breakdown, average API response times, error rates, etc. Something we can open in a browser and share without needing a full analytics platform.
+- [x] **API response time logging**: `TrackApiMetrics` middleware automatically logs every API call with endpoint, duration (ms), status code, and content length to `api_metrics` SQLite table.
+- [ ] **Frontend timing for Simli/WebRTC**: The Simli session token request, ICE server fetch, and WebRTC connection all happen directly from the browser (no Laravel route) so they're invisible to backend metrics. To track Watch pane performance end-to-end (Cartesia TTS wait + Simli connection + video stream start), we'd need frontend-side timing that posts results back to the server.
+- [ ] **Streaming endpoint timing**: The `translate`, `chat`, and `overview` routes return StreamedResponses — the middleware only captures setup time (~3ms), not actual generation duration. To get real timing, we'd need to measure inside the controller (time from first to last chunk) or add frontend-side timing.
+- [x] **Metrics report**: `php artisan clario:metrics` generates both a terminal summary table and a standalone HTML report (`storage/reports/metrics.html`) with per-endpoint stats (count, avg, p50, p95, max, error rate) and daily breakdown. Use `--days=N` to adjust range.
 
 ## Feature Enhancements
 - [ ] Add pause/resume functionality for video avatars (D-ID and Simli)

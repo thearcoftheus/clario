@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AvatarController;
+use App\Http\Middleware\TrackApiMetrics;
 use App\Http\Middleware\ValidateApiKey;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -11,7 +12,7 @@ Route::get('/user', function(Request $request) {
 })->middleware('auth:sanctum');
 
 // All Clario API routes require API key authentication
-Route::middleware([ValidateApiKey::class])->group(function () {
+Route::middleware([ValidateApiKey::class, TrackApiMetrics::class])->group(function () {
     Route::post('/readability', [AiController::class, 'readability'])->name('readability');
     Route::post('/overview', [AiController::class, 'overview'])->name('overview');
     Route::post('/headline', [AiController::class, 'headline'])->name('headline');
