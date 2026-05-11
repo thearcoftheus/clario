@@ -18,10 +18,6 @@
                 <img :src="animatedImagesIcon" alt="" class="size-5" />
                 <span class="text-lg font-bold leading-tight tracking-tight text-purple">Watch</span>
             </div>
-            <div class="flex items-center gap-1.5 opacity-50">
-                <span class="text-sm text-purple">Change Provider</span>
-                <img :src="settingsIcon" alt="" class="size-3.5" />
-            </div>
         </div>
 
         <!-- Content card -->
@@ -149,10 +145,9 @@ import { SimliClient, generateSimliSessionToken, generateIceServers } from 'siml
 import axios from 'axios';
 import { Loader2, Pause, Play } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import animatedImagesIcon from '@/../icons/sidebar/animated-images.svg';
-import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const historyStore = useHistoryStore();
 const { historyItems } = storeToRefs(historyStore);
@@ -173,6 +168,14 @@ const isPaused = ref(false);
 
 let simliClient: SimliClient | null = null;
 let cachedAudio: Uint8Array | null = null;
+let disposed = false;
+
+onMounted(() => {
+    const url = currentItem.value?.url;
+    if (url && avatarStore.cartesiaAudioForUrl === url && avatarStore.cartesiaAudio) {
+        cachedAudio = avatarStore.cartesiaAudio;
+    }
+});
 
 const showVideo = computed(() =>
     simliStatus.value === 'streaming' ||
@@ -219,6 +222,19 @@ async function startGeneration() {
                 { responseType: 'arraybuffer' },
             );
             pcm16Audio = new Uint8Array(response.data);
+
+            // Cache to the global store regardless of local component lifecycle —
+            // if the user navigated away mid-fetch, the next visit can still reuse it.
+            const articleUrl = currentItem.value?.url;
+            if (articleUrl) {
+                avatarStore.cacheCartesiaAudio({ audio: pcm16Audio, url: articleUrl });
+            }
+
+            // Bail out if the user navigated away during the slow Cartesia fetch.
+            // Skips Simli session-token fetch, ICE-server fetch, and constructing a
+            // SimliClient against now-null video/audio refs.
+            if (disposed) return;
+
             cachedAudio = pcm16Audio;
         }
 
@@ -311,6 +327,7 @@ function resetSimli() {
 }
 
 onBeforeUnmount(() => {
+    disposed = true;
     if (simliClient) {
         simliClient.stop();
         simliClient = null;

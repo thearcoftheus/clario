@@ -306,7 +306,7 @@ PROMPT;
                 ],
                 'language' => 'en',
                 'generation_config' => [
-                    'speed' => 0.85,
+                    'speed' => 0.75,
                 ],
                 'output_format' => [
                     'container' => 'raw',

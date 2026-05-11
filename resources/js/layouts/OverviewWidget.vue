@@ -14,8 +14,7 @@
 
             <!-- Center: Message -->
             <p class="flex-1 text-center text-base text-white whitespace-nowrap">
-                Clario can help you <span class="underline">listen to this page</span>
-                <Volume2 class="ml-2 inline size-6 align-middle text-white" />
+                Clario can help you understand this page
             </p>
 
             <!-- Right: CTA Button -->
@@ -31,7 +30,6 @@
 
 <script lang="ts" setup>
 import chromeMessage from '@/helpers/chromeMessage';
-import { Volume2 } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 const showWidget = ref(true);

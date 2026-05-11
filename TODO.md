@@ -17,7 +17,11 @@
 - [ ] Wire up footer links (Help, About, Advanced Settings)
 
 ## Performance — Listen Pane
-- [ ] Persist audio state across navigation. Currently, navigating away from the Listen pane unmounts the component, discards the audio, and loses playback position. Moving audio state into a Pinia store (like chatStore) would preserve it. Desired behavior: navigating away pauses the audio automatically; navigating back shows the paused state at the same position; the user must click play to resume. Audio should NOT continue playing in the background while on other panes.
+- [x] Persist audio state across navigation. Currently, navigating away from the Listen pane unmounts the component, discards the audio, and loses playback position. Moving audio state into a Pinia store (like chatStore) would preserve it. Desired behavior: navigating away pauses the audio automatically; navigating back shows the paused state at the same position; the user must click play to resume. Audio should NOT continue playing in the background while on other panes.
+- [ ] Dedupe in-flight Listen audio requests across pane re-mounts. If the user switches Read↔Listen quickly during generation, a second mount issues a duplicate `/api/narrate-sync` call because the first hasn't returned yet (cache miss in `restoreFromStore()`). Both requests eventually cache the same data — wasteful but not broken. Fix: track an in-flight promise at the store level (`listenStore.pendingGeneration: { url, promise }`); `useListenPlayer.generate()` checks (1) cache, (2) matching pending promise to await, (3) otherwise issues a new request and registers the promise. Estimated ~15-20 lines across `listenStore.ts` and `useListenPlayer.ts`.
+
+## Performance — Watch Pane
+- [ ] Dedupe in-flight Cartesia TTS requests across Watch-pane re-mounts. If the user clicks Generate Video, switches to Easy Read, returns, and clicks Generate Video again *while* the first `/api/avatar/cartesia.tts` call is still in flight, a second request is issued (the store cache hasn't been populated yet). Both eventually return; the second write wins. Wasteful (~53s of TTS work paid twice). Same fix pattern as the Listen Case B item above: an in-flight promise on `avatarStore` keyed by article URL, awaited by subsequent calls.
 
 ## Performance — Sidebar
 - [ ] Defer the `/api/translate` (summary generation) call until the user actually clicks a card. Currently `HistoryItemStream` fires the AI call immediately when the sidebar opens, even if the user only wants Chat or Listen. Could lazy-load per pane, or at least delay until "Easy Read" is tapped. Tradeoff: pre-fetching means the summary is ready instantly when they do click it.
@@ -46,7 +50,7 @@
 
 ## Feature Enhancements
 - [ ] Add pause/resume functionality for video avatars (D-ID and Simli)
-- [ ] Add replay functionality for Simli avatar - cache generated audio so user can replay without regenerating speech and reconnecting
+- [x] Add replay functionality for Simli avatar - cache generated audio so user can replay without regenerating speech and reconnecting (Cartesia PCM16 audio now cached in `avatarStore` keyed by article URL — survives WatchPane unmount/remount, so returning mid-generation skips the ~53s TTS step on the next click)
 
 ## Investigations
 - [ ] Plan/investigate fixes for situation where opening different Chrome windows or tabs messes up the Clario sidebar for existing windows or tabs

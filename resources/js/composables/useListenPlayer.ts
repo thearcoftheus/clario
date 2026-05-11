@@ -160,21 +160,24 @@ export function useListenPlayer() {
                 { headers: getApiHeaders() },
             );
 
-            if (disposed) return;
-
             const data = response.data;
+            const generatedWords = data.text.split(/\s+/).filter((w: string) => w.length > 0);
+            const generatedTimepoints = data.timepoints || [];
 
-            words.value = data.text.split(/\s+/).filter((w: string) => w.length > 0);
-            timepoints.value = data.timepoints || [];
-            estimatedTimings = null;
-
-            // Cache in the store for persistence across navigation
+            // Cache to the global store regardless of local component lifecycle —
+            // if the user navigated away mid-fetch, the next visit can still restore.
             listenStore.cacheAudio({
                 audio: data.audio,
-                words: words.value,
-                timepoints: timepoints.value,
+                words: generatedWords,
+                timepoints: generatedTimepoints,
                 url: articleUrl,
             });
+
+            if (disposed) return;
+
+            words.value = generatedWords;
+            timepoints.value = generatedTimepoints;
+            estimatedTimings = null;
 
             createAudioElement(data.audio);
         } catch (e: any) {

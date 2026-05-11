@@ -18,10 +18,6 @@
                 <img :src="bookIcon" alt="" class="size-5" />
                 <span class="text-lg font-bold leading-tight tracking-tight text-purple">Easy Read</span>
             </div>
-            <div class="flex items-center gap-1.5 opacity-50">
-                <span class="text-sm text-purple">Simplify Text</span>
-                <img :src="settingsIcon" alt="" class="size-3.5" />
-            </div>
         </div>
 
         <!-- Content card with pagination -->
@@ -96,7 +92,6 @@ import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
 
 import bookIcon from '@/../icons/sidebar/book.svg';
-import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const nav = useNavigation();
 

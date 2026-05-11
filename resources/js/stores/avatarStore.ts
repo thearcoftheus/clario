@@ -17,6 +17,11 @@ export const useAvatarStore = defineStore('avatar', () => {
     const errorMessage = ref<string | null>(null);
     const scriptText = ref<string | null>(null);
 
+    // Cached Cartesia PCM16 audio — survives WatchPane unmount/remount so the
+    // user can return mid-generation without re-paying the ~53s TTS step.
+    const cartesiaAudio = ref<Uint8Array | null>(null);
+    const cartesiaAudioForUrl = ref<string | null>(null);
+
     let pollInterval: ReturnType<typeof setInterval> | null = null;
     let pollCount = 0;
     const MAX_POLLS = 36; // 3 minutes at 5 second intervals
@@ -56,7 +61,14 @@ export const useAvatarStore = defineStore('avatar', () => {
         jobId.value = null;
         errorMessage.value = null;
         scriptText.value = null;
+        cartesiaAudio.value = null;
+        cartesiaAudioForUrl.value = null;
         pollCount = 0;
+    }
+
+    function cacheCartesiaAudio(data: { audio: Uint8Array; url: string }) {
+        cartesiaAudio.value = data.audio;
+        cartesiaAudioForUrl.value = data.url;
     }
 
     function stopPolling() {
@@ -179,8 +191,11 @@ export const useAvatarStore = defineStore('avatar', () => {
         currentPageUrl,
         errorMessage,
         scriptText,
+        cartesiaAudio,
+        cartesiaAudioForUrl,
         prepareScript,
         generateAvatarVideo,
+        cacheCartesiaAudio,
         reset,
         stopPolling,
     };

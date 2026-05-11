@@ -135,8 +135,8 @@
 
         <!-- Footer -->
         <footer class="flex shrink-0 items-center justify-between bg-white px-4 py-2">
-            <a href="#" class="text-sm text-black underline">Help</a>
-            <a href="#" class="text-sm text-black underline">About</a>
+            <button class="cursor-pointer text-sm text-black underline" @click="helpDialog?.open()">Help</button>
+            <button class="cursor-pointer text-sm text-black underline" @click="aboutDialog?.open()">About</button>
             <button class="flex cursor-pointer items-center gap-1" @click="settingsDialog?.open()">
                 <img :src="settingsIcon" alt="" class="size-[14px]" />
                 <span class="text-sm text-black underline">Advanced Settings</span>
@@ -144,6 +144,8 @@
         </footer>
 
         <SettingsDialog ref="settingsDialog" />
+        <HelpDialog ref="helpDialog" />
+        <AboutDialog ref="aboutDialog" />
 
         <ChatModal :open="showChatModal" @close="showChatModal = false" />
     </div>
@@ -155,8 +157,10 @@
 </template>
 
 <script lang="ts" setup>
+import AboutDialog from '@/components/AboutDialog.vue';
 import ChatModal from '@/components/ChatModal.vue';
 import EasyReadPane from '@/components/EasyReadPane.vue';
+import HelpDialog from '@/components/HelpDialog.vue';
 import SettingsDialog from '@/components/SettingsDialog.vue';
 import HistoryItemHeadline from '@/components/HistoryItemHeadline.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
@@ -202,6 +206,8 @@ function closeSidebar() {
 }
 
 const settingsDialog = ref<InstanceType<typeof SettingsDialog> | null>(null);
+const helpDialog = ref<InstanceType<typeof HelpDialog> | null>(null);
+const aboutDialog = ref<InstanceType<typeof AboutDialog> | null>(null);
 
 const currentItem = computed(() => historyItems.value[0] ?? null);
 </script>

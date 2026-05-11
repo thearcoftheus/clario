@@ -18,10 +18,6 @@
                 <img :src="earSoundIcon" alt="" class="size-5" />
                 <span class="text-lg font-bold leading-tight tracking-tight text-purple">Listen</span>
             </div>
-            <div class="flex items-center gap-1.5 opacity-50">
-                <span class="text-sm text-purple">Change Speed / Voice</span>
-                <img :src="settingsIcon" alt="" class="size-3.5" />
-            </div>
         </div>
 
         <!-- Content card -->
@@ -109,7 +105,6 @@ import { storeToRefs } from 'pinia';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 import earSoundIcon from '@/../icons/sidebar/ear-sound.svg';
-import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const historyStore = useHistoryStore();
 const { historyItems } = storeToRefs(historyStore);
