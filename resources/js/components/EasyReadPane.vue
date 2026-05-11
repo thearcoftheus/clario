@@ -51,7 +51,14 @@
                     >
                         <ChevronLeft class="size-3.5 text-purple" />
                     </button>
-                    <span class="text-sm font-bold text-purple">Page {{ currentPage }} of {{ totalPages }}</span>
+                    <button
+                        v-if="currentPage > 1"
+                        class="cursor-pointer text-sm font-bold text-purple hover:underline"
+                        @click="prevPage"
+                    >
+                        Back
+                    </button>
+                    <span v-else class="text-sm font-bold text-gray-300">Back</span>
                     <button
                         v-if="currentPage < totalPages"
                         class="cursor-pointer text-sm font-bold text-purple hover:underline"
@@ -68,6 +75,14 @@
                     >
                         <ChevronRight class="size-3.5 text-purple" />
                     </button>
+                </div>
+
+                <!-- Progress bar (no numbers — just a felt sense of progress) -->
+                <div class="h-1 shrink-0 bg-gray-100">
+                    <div
+                        class="h-full bg-purple transition-[width] duration-300 ease-out"
+                        :style="{ width: progressPercent + '%' }"
+                    />
                 </div>
             </template>
         </div>
@@ -115,4 +130,15 @@ const { currentPage, totalPages, nextPage, prevPage, translateX } = useContentPa
     contentContainer,
     simplifiedContentRef,
 );
+
+const progressPercent = computed(() => {
+    if (totalPages.value === 0) return 0;
+    // While the summary is still streaming, totalPages keeps growing as new
+    // pages are appended — which makes the fill width oscillate alarmingly.
+    // Hold the fill at 0 until streaming completes; the gray track stays
+    // visible for visual consistency, and the fill animates in smoothly
+    // once the denominator stabilizes.
+    if (currentItem.value?.isStreaming || currentItem.value?.isFetching) return 0;
+    return (currentPage.value / totalPages.value) * 100;
+});
 </script>

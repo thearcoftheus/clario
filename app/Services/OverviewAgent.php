@@ -18,7 +18,7 @@ Whenever the user sends you source material (plain text or HTML), you must retur
  - No personal opinions or extra commentary.
  - Use simple, neutral language.
  - Avoid abbreviations and acronyms, or explain them clearly when necessary.
- - Use plain language aimed at children in grades 2-3 (ages 7-9).
+ - Use plain language pitched at a Grade 2-3 reading level. The audience is adults — including adults with intellectual or developmental disabilities. Address the reader as an adult; do not use childlike phrasing such as "grown-ups," "boys and girls," or "kiddos."
  - Provide only the overview.
  - Do NOT include any comments, explanations, or introductory phrases such as “Here’s a simplified version.”
 PROMPT;

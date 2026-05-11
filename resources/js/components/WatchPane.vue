@@ -21,7 +21,7 @@
         </div>
 
         <!-- Content card -->
-        <div class="mx-4 mb-5 flex flex-col rounded-xl border-[0.5px] border-card-border bg-white">
+        <div class="mx-4 mb-5 flex min-h-0 flex-1 flex-col rounded-xl border-[0.5px] border-card-border bg-white">
             <!-- Video/audio elements (always in DOM, hidden when not active) -->
             <div :class="showVideo ? '' : 'hidden'">
                 <div class="relative aspect-[4/5] w-full bg-black">
@@ -75,13 +75,13 @@
             </div>
 
             <!-- Preparing script -->
-            <div v-if="(scriptStatus === 'idle' || scriptStatus === 'preparing') && simliStatus === 'idle'" class="flex flex-col items-center justify-center gap-3 p-8">
+            <div v-if="(scriptStatus === 'idle' || scriptStatus === 'preparing') && simliStatus === 'idle'" class="flex flex-1 flex-col items-center justify-center gap-3 p-8">
                 <Loader2 class="size-6 animate-spin text-purple" />
                 <p class="text-sm text-gray-500">Preparing script...</p>
             </div>
 
             <!-- Script ready, not yet generating -->
-            <div v-else-if="scriptStatus === 'ready' && simliStatus === 'idle'" class="flex flex-col items-center justify-center gap-4 p-6 text-center">
+            <div v-else-if="scriptStatus === 'ready' && simliStatus === 'idle'" class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
                 <div class="flex size-16 items-center justify-center rounded-full bg-purple-light">
                     <img :src="animatedImagesIcon" alt="" class="size-10" />
                 </div>
@@ -98,7 +98,7 @@
             </div>
 
             <!-- Stopped (audio cached, ready to replay) -->
-            <div v-else-if="simliStatus === 'stopped'" class="flex flex-col items-center justify-center gap-4 p-6 text-center">
+            <div v-else-if="simliStatus === 'stopped'" class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
                 <div class="flex size-16 items-center justify-center rounded-full bg-purple-light">
                     <Play class="size-8 text-purple" />
                 </div>
@@ -112,7 +112,7 @@
             </div>
 
             <!-- Generating / connecting -->
-            <div v-else-if="simliStatus === 'preparing' || simliStatus === 'connecting'" class="flex flex-col items-center justify-center gap-3 p-8">
+            <div v-else-if="simliStatus === 'preparing' || simliStatus === 'connecting'" class="flex flex-1 flex-col items-center justify-center gap-3 p-8">
                 <Loader2 class="size-8 animate-spin text-purple" />
                 <p class="text-sm font-medium text-purple">
                     {{ simliStatus === 'preparing' ? 'Generating speech...' : 'Connecting to avatar...' }}
@@ -123,7 +123,7 @@
             </div>
 
             <!-- Script error -->
-            <div v-if="scriptStatus === 'error' && simliStatus === 'idle'" class="flex flex-col items-center justify-center gap-3 p-8 text-center">
+            <div v-if="scriptStatus === 'error' && simliStatus === 'idle'" class="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
                 <p class="text-sm text-gray-500">Failed to prepare script. Please try again.</p>
             </div>
         </div>

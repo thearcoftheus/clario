@@ -11,7 +11,7 @@ export type ChatMessage = {
 };
 
 export const useChatStore = defineStore('chatstore', function () {
-    const chatMessages = ref<ChatMessage[]>([{ sender: 'assistant', text: 'Hello! How can I help you today?' }]);
+    const chatMessages = ref<ChatMessage[]>([{ sender: 'assistant', text: 'Do you have any questions about this article?' }]);
 
     let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
     let abortController: AbortController | null = null;

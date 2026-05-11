@@ -34,11 +34,18 @@
                         <Transition name="fade">
                             <div v-if="!currentItem.isHeadlineLoading" class="flex">
                                 <img
-                                    v-if="currentItem.image"
+                                    v-if="currentItem.image && !homeImageFailed"
                                     :src="currentItem.image"
                                     alt=""
                                     class="w-[80px] shrink-0 self-stretch object-cover"
+                                    @error="homeImageFailed = true"
                                 />
+                                <div
+                                    v-else
+                                    class="flex w-[80px] shrink-0 items-center justify-center self-stretch bg-purple-light"
+                                >
+                                    <Newspaper class="size-7 text-purple" />
+                                </div>
                                 <div class="flex flex-col justify-center gap-1 p-3">
                                     <p class="text-base font-bold leading-tight tracking-tight text-black">
                                         {{ currentItem.aiTitle || currentItem.name }}
@@ -170,9 +177,9 @@ import { Toaster } from '@/components/ui/sonner';
 import { NavigationKey, type View } from '@/composables/useNavigation';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
-import { ChevronDown, Loader2 } from 'lucide-vue-next';
+import { ChevronDown, Loader2, Newspaper } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { computed, provide, ref } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import 'vue-sonner/style.css';
 
 import bookIcon from '@/../icons/sidebar/book.svg';
@@ -210,6 +217,10 @@ const helpDialog = ref<InstanceType<typeof HelpDialog> | null>(null);
 const aboutDialog = ref<InstanceType<typeof AboutDialog> | null>(null);
 
 const currentItem = computed(() => historyItems.value[0] ?? null);
+
+// Thumbnail load-failure fallback: reset on article change.
+const homeImageFailed = ref(false);
+watch(() => currentItem.value?.image, () => { homeImageFailed.value = false; });
 </script>
 
 <style lang="scss">

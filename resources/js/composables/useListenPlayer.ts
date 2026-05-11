@@ -321,6 +321,7 @@ export function useListenPlayer() {
         words,
         speed,
         generate,
+        tryRestore: restoreFromStore,
         play,
         pause,
         stop,

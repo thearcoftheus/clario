@@ -9,9 +9,9 @@ enum SimplificationLevel: string {
 
     public function grade(): string {
         return match ($this) {
-            self::EASY => "grades 2-3 (ages 7-9)",
-            self::MODERATE => "grades 5-6 (ages 10-12)",
-            self::ADVANCED => "grades 9-10 (ages 14-16)",
+            self::EASY => "a Grade 2-3 reading level",
+            self::MODERATE => "a Grade 5-6 reading level",
+            self::ADVANCED => "a Grade 9-10 reading level",
         };
     }
 }

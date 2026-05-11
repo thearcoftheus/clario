@@ -22,17 +22,15 @@
 
         <!-- Content card -->
         <div class="mx-4 mb-5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-[0.5px] border-card-border bg-white">
-            <!-- Audio player bar -->
-            <div class="shrink-0 rounded-t-xl bg-purple px-4 py-3">
+            <!-- Audio player bar (only visible once audio is generated/cached) -->
+            <div v-if="hasAudio" class="shrink-0 rounded-t-xl bg-purple px-4 py-3">
                 <div class="flex items-center gap-3">
                     <!-- Play/Pause button -->
                     <button
                         class="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-white"
-                        :disabled="isGenerating || !hasAudio"
                         @click="togglePlayPause"
                     >
-                        <Loader2 v-if="isGenerating && !hasAudio" class="size-5 animate-spin text-purple" />
-                        <Pause v-else-if="isPlaying" class="size-5 text-purple" />
+                        <Pause v-if="isPlaying" class="size-5 text-purple" />
                         <Play v-else class="size-5 text-purple" />
                     </button>
 
@@ -58,15 +56,16 @@
                 </div>
             </div>
 
-            <!-- Scrollable text with word highlighting -->
+            <!-- Scrollable body -->
             <div ref="scrollContainer" class="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                <!-- Loading state -->
-                <div v-if="isGenerating && words.length === 0" class="flex items-center justify-center py-8">
-                    <Loader2 class="size-6 animate-spin text-purple" />
-                    <span class="ml-2 text-sm text-gray-500">Generating audio...</span>
+                <!-- Generating -->
+                <div v-if="isGenerating" class="flex flex-col items-center justify-center gap-3 p-8 text-center">
+                    <Loader2 class="size-8 animate-spin text-purple" />
+                    <p class="text-sm font-medium text-purple">Generating audio...</p>
+                    <p class="text-sm text-gray-400">This may take up to 30 seconds</p>
                 </div>
 
-                <!-- Word-highlighted text -->
+                <!-- Word-highlighted text (audio ready) -->
                 <div v-else-if="words.length > 0">
                     <p v-for="(para, pIdx) in paragraphs" :key="pIdx" class="mb-4 flex flex-wrap leading-relaxed">
                         <span
@@ -79,10 +78,28 @@
                     </p>
                 </div>
 
-                <!-- Waiting for content -->
-                <div v-else class="flex items-center justify-center py-8">
+                <!-- Ready to listen (summary done, no cached audio, no generation in flight) -->
+                <div v-else-if="summaryReady" class="flex flex-col items-center justify-center gap-4 p-6 text-center">
+                    <div class="flex size-16 items-center justify-center rounded-full bg-purple-light">
+                        <img :src="earSoundIcon" alt="" class="size-10" />
+                    </div>
+                    <div>
+                        <p class="text-base font-bold text-black">Ready to generate audio</p>
+                        <p class="mt-1 text-sm text-gray-500">Audio generation can take up to 30 seconds</p>
+                    </div>
+                    <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+                    <button
+                        class="cursor-pointer rounded-lg bg-purple px-6 py-2.5 text-sm font-bold text-white"
+                        @click="startListening"
+                    >
+                        {{ error ? 'Try Again' : 'Generate Audio' }}
+                    </button>
+                </div>
+
+                <!-- Waiting for summary -->
+                <div v-else class="flex h-full flex-col items-center justify-center gap-3 p-8">
                     <Loader2 class="size-6 animate-spin text-purple" />
-                    <span class="ml-2 text-sm text-gray-500">Waiting for summary...</span>
+                    <span class="text-sm text-gray-500">Waiting for summary...</span>
                 </div>
             </div>
         </div>
@@ -125,6 +142,7 @@ const {
     currentWordIndex,
     words,
     generate,
+    tryRestore,
     play,
     pause,
     seekTo,
@@ -183,6 +201,9 @@ function stripMarkdownForDisplay(text: string): string {
     t = t.replace(/\[(.+?)\]\(.+?\)/g, '$1');
     t = t.replace(/^[\*\-\+]\s+/gm, '');
     t = t.replace(/^\d+\.\s+/gm, '');
+    // Mirror the backend's emoji strip in stripMarkdown() so the on-screen
+    // Listen words align with the words the TTS actually spoke.
+    t = t.replace(/\p{Extended_Pictographic}/gu, '');
     return t;
 }
 
@@ -201,14 +222,14 @@ function onProgressClick(e: MouseEvent) {
     seekTo(Math.max(0, Math.min(1, fraction)));
 }
 
-function isSummaryReady() {
-    return currentItem.value?.simplifiedContent &&
-        !currentItem.value?.isFetching &&
-        !currentItem.value?.isStreaming;
-}
+const summaryReady = computed(() =>
+    !!currentItem.value?.simplifiedContent &&
+    !currentItem.value?.isFetching &&
+    !currentItem.value?.isStreaming
+);
 
 function startListening() {
-    if (isSummaryReady()) {
+    if (summaryReady.value) {
         generate(currentItem.value!.simplifiedContent, currentItem.value!.url);
     }
 }
@@ -227,20 +248,15 @@ watch(currentWordIndex, (idx) => {
     }
 });
 
-// Auto-generate on mount (but don't auto-play — user must click play).
-// If summary isn't ready yet, watch for it and generate when it arrives.
+// On mount, try to restore cached audio (instant if available, no API call).
+// If no cache, the user lands on the "Ready to listen" state and clicks
+// Generate Audio to start TTS. This matches the Watch pane's click-to-generate
+// pattern (Round 1 testing feedback #1: audio should mirror video's explicit
+// generate flow + wait-time messaging).
 onMounted(() => {
-    if (isSummaryReady()) {
-        startListening();
+    const url = currentItem.value?.url;
+    if (url) {
+        tryRestore(url);
     }
 });
-
-watch(
-    () => currentItem.value?.isStreaming,
-    (streaming, wasStreaming) => {
-        if (wasStreaming && !streaming && !hasAudio.value && isSummaryReady()) {
-            startListening();
-        }
-    },
-);
 </script>

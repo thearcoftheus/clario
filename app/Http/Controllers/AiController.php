@@ -109,6 +109,8 @@ class AiController extends Controller {
         $text = preg_replace('/\[(.+?)\]\(.+?\)/', '$1', $text);
         $text = preg_replace('/^[\*\-\+]\s+/m', '', $text);
         $text = preg_replace('/^\d+\.\s+/m', '', $text);
+        // Strip emoji so the TTS doesn't read them aloud as "smiling face" etc.
+        $text = preg_replace('/\p{Extended_Pictographic}/u', '', $text);
         return html_entity_decode(strip_tags($text));
     }
 

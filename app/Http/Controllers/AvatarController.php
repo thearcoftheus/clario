@@ -13,11 +13,11 @@ class AvatarController extends Controller
     private const PRESENTER_ID = 'v2_public_Alyssa_NoHands_BlackShirt_Home@Mvn6Nalx90';
     private const MAX_SUMMARY_LENGTH = 1000;
 
-    // Map simplification level to grade description
+    // Map simplification level to reading-level description (no audience-as-children framing).
     private const READING_LEVELS = [
-        'Easy' => 'grades 2-3 (ages 7-9)',
-        'Moderate' => 'grades 5-6 (ages 10-12)',
-        'Challenging' => 'grades 9-10 (ages 14-16)',
+        'Easy' => 'a Grade 2-3 reading level',
+        'Moderate' => 'a Grade 5-6 reading level',
+        'Challenging' => 'a Grade 9-10 reading level',
     ];
 
     private function getAuthHeader(): string
@@ -36,10 +36,11 @@ class AvatarController extends Controller
         $grade = $this->getReadingLevelGrade($readingLevel);
 
         $prompt = <<<PROMPT
-You are a helpful assistant that explains complex topics in simple terms for children in {$grade}.
+You are a helpful assistant that rewrites complex topics in plain language for adult readers whose comfortable reading level is around {$grade}.
+Your audience is adults — including adults with intellectual or developmental disabilities. Address the reader as an adult; do not use childlike phrasing such as "grown-ups," "boys and girls," "kiddos," or similar terms geared toward children. When referring to adult people, use "adults."
 
 Condense the following summary into a shorter version that is no longer than {$maxLength} characters.
-Use basic words and short sentences while keeping the original meaning.
+Use everyday words and short sentences while keeping the original meaning.
 Keep the most important information and maintain a natural, conversational tone suitable for being read aloud.
 Do not use any markdown formatting, bullet points, or special characters.
 Write in plain text only, as this will be spoken by a voice avatar.
