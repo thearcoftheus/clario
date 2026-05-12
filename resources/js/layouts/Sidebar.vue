@@ -68,7 +68,7 @@
                         Choose How To Learn About It
                     </h2>
                     <div class="flex flex-col gap-2">
-                        <!-- Easy Read (full-width, purple) -->
+                        <!-- Simple Read (full-width, purple) -->
                         <button
                             class="flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] border-card-border bg-purple p-3 text-left"
                             @click="activeView = 'summary'"
@@ -77,7 +77,7 @@
                                 <img :src="bookIcon" alt="" class="size-[36px]" />
                             </div>
                             <div class="flex-1">
-                                <p class="text-base font-bold leading-tight tracking-tight text-white">Easy Read</p>
+                                <p class="text-base font-bold leading-tight tracking-tight text-white">Simple Read</p>
                                 <p class="mt-0.5 text-sm text-white">Simpler words, bigger text, pictures</p>
                             </div>
                             <div class="flex shrink-0 flex-col items-end gap-1">
@@ -124,10 +124,10 @@
                                 @click="activeView = 'avatar'"
                             >
                                 <div class="mb-2 flex size-[36px] items-center justify-center rounded-xl bg-sidebar-bg">
-                                    <img :src="animatedImagesIcon" alt="" class="size-[36px]" />
+                                    <img :src="explainerIcon" alt="" class="size-[36px]" />
                                 </div>
                                 <p class="text-base font-bold leading-tight tracking-tight text-purple">Watch</p>
-                                <p class="mt-0.5 text-sm text-purple">Watch A video</p>
+                                <p class="mt-0.5 text-sm text-purple">An explainer video</p>
                             </button>
                         </div>
                     </div>
@@ -185,7 +185,7 @@ import 'vue-sonner/style.css';
 import bookIcon from '@/../icons/sidebar/book.svg';
 import earSoundIcon from '@/../icons/sidebar/ear-sound.svg';
 import personRaisedHandIcon from '@/../icons/sidebar/person-raised-hand.svg';
-import animatedImagesIcon from '@/../icons/sidebar/animated-images.svg';
+import explainerIcon from '@/../icons/sidebar/explainer.svg';
 import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const activeView = ref<View>('home');

@@ -52,6 +52,11 @@ export default defineConfig(({ mode }) => ({
         outDir: 'chrome_extension/build',
         sourcemap: true,
         copyPublicDir: false,
+        // Inline assets up to 32 KB as data URIs. The default 4 KB threshold
+        // caused larger icons (e.g. explainer.svg at ~16 KB) to be emitted as
+        // separate files, which don't resolve correctly inside the Chrome
+        // extension sidebar context.
+        assetsInlineLimit: 32 * 1024,
         rollupOptions: {
             input: 'resources/js/sidebar.ts',
             output: {

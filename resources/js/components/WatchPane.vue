@@ -15,7 +15,7 @@
         <!-- Watch heading row -->
         <div class="flex items-center justify-between px-4 pb-3">
             <div class="flex items-center gap-1.5">
-                <img :src="animatedImagesIcon" alt="" class="size-5" />
+                <img :src="explainerIcon" alt="" class="size-5" />
                 <span class="text-lg font-bold leading-tight tracking-tight text-purple">Watch</span>
             </div>
         </div>
@@ -83,7 +83,7 @@
             <!-- Script ready, not yet generating -->
             <div v-else-if="scriptStatus === 'ready' && simliStatus === 'idle'" class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
                 <div class="flex size-16 items-center justify-center rounded-full bg-purple-light">
-                    <img :src="animatedImagesIcon" alt="" class="size-10" />
+                    <img :src="explainerIcon" alt="" class="size-10" />
                 </div>
                 <div>
                     <p class="text-base font-bold text-black">Ready to generate video</p>
@@ -147,7 +147,7 @@ import { Loader2, Pause, Play } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import animatedImagesIcon from '@/../icons/sidebar/animated-images.svg';
+import explainerIcon from '@/../icons/sidebar/explainer.svg';
 
 const historyStore = useHistoryStore();
 const { historyItems } = storeToRefs(historyStore);

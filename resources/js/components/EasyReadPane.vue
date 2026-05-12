@@ -12,11 +12,11 @@
             />
         </div>
 
-        <!-- Easy Read heading row -->
+        <!-- Simple Read heading row -->
         <div class="flex items-center justify-between px-4 pb-3">
             <div class="flex items-center gap-1.5">
                 <img :src="bookIcon" alt="" class="size-5" />
-                <span class="text-lg font-bold leading-tight tracking-tight text-purple">Easy Read</span>
+                <span class="text-lg font-bold leading-tight tracking-tight text-purple">Simple Read</span>
             </div>
         </div>
 

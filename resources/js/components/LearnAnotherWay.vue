@@ -12,7 +12,7 @@
                 <div class="mr-1.5 flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-sidebar-bg">
                     <img :src="bookIcon" alt="" class="size-[24px]" />
                 </div>
-                <span class="text-sm font-bold leading-tight tracking-tight text-purple">Easy Read</span>
+                <span class="text-sm font-bold leading-tight tracking-tight text-purple">Read</span>
             </button>
 
             <button
@@ -43,7 +43,7 @@
                 @click="nav.setActiveView('avatar')"
             >
                 <div class="mr-1.5 flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-sidebar-bg">
-                    <img :src="animatedImagesIcon" alt="" class="size-[28px]" />
+                    <img :src="explainerIcon" alt="" class="size-[28px]" />
                 </div>
                 <span class="text-sm font-bold leading-tight tracking-tight text-purple">Watch</span>
             </button>
@@ -57,7 +57,7 @@ import { useNavigation, type View } from '@/composables/useNavigation';
 import bookIcon from '@/../icons/sidebar/book.svg';
 import earSoundIcon from '@/../icons/sidebar/ear-sound.svg';
 import personRaisedHandIcon from '@/../icons/sidebar/person-raised-hand.svg';
-import animatedImagesIcon from '@/../icons/sidebar/animated-images.svg';
+import explainerIcon from '@/../icons/sidebar/explainer.svg';
 
 defineProps<{
     exclude: View;

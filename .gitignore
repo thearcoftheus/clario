@@ -28,3 +28,6 @@ yarn-error.log
 /chrome_extension/icon-16.png
 /chrome_extension/icon-48.png
 /chrome_extension/icon-128.png
+
+# macOS Finder metadata — never want these in the repo
+.DS_Store
