@@ -156,12 +156,9 @@ PROMPT;
 
         $summary = $this->stripMarkdown($rawSummary);
 
-        // If summary is too long, use AI to condense it
-        if (strlen($summary) > self::MAX_SUMMARY_LENGTH) {
-            $summary = $this->condenseSummary($summary, self::MAX_SUMMARY_LENGTH, $readingLevel);
-        }
-
-        // Build the script
+        // Use the easy-read summary verbatim. The earlier MAX_SUMMARY_LENGTH/condense step was
+        // removed so audio + video match the easy-read summary exactly. Longer scripts mean more
+        // Cartesia TTS time and more Simli streaming minutes — monitored, not capped.
         $script = "This article is called {$title}. Here's what it's about. {$summary}";
 
         return response()->json([
@@ -292,13 +289,14 @@ PROMPT;
         try {
             Log::info('Cartesia TTS request', [
                 'textLength' => strlen($validated['text']),
+                'wordCount' => str_word_count($validated['text']),
             ]);
 
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $cartesiaApiKey,
                 'Cartesia-Version' => '2024-11-13',
                 'Content-Type' => 'application/json',
-            ])->timeout(60)->post('https://api.cartesia.ai/tts/bytes', [
+            ])->timeout(180)->post('https://api.cartesia.ai/tts/bytes', [
                 'model_id' => 'sonic-3',
                 'transcript' => $validated['text'],
                 'voice' => [
@@ -380,7 +378,7 @@ PROMPT;
                 'Authorization' => 'Bearer ' . $cartesiaApiKey,
                 'Cartesia-Version' => '2024-11-13',
                 'Content-Type' => 'application/json',
-            ])->timeout(60)->post('https://api.cartesia.ai/tts/bytes', [
+            ])->timeout(180)->post('https://api.cartesia.ai/tts/bytes', [
                 'model_id' => 'sonic-3',
                 'transcript' => $validated['text'],
                 'voice' => [

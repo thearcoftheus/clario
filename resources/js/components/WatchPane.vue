@@ -118,7 +118,7 @@
                     {{ simliStatus === 'preparing' ? 'Generating speech...' : 'Connecting to avatar...' }}
                 </p>
                 <p class="text-sm text-gray-400">
-                    {{ simliStatus === 'preparing' ? 'This may take up to 2 minutes' : 'This may take up to 15 seconds' }}
+                    {{ simliStatus === 'preparing' ? 'This may take up to 3 minutes for long articles' : 'This may take up to 15 seconds' }}
                 </p>
             </div>
 
@@ -245,7 +245,7 @@ async function startGeneration() {
             config: {
                 faceId: SIMLI_FACE_ID,
                 handleSilence: true,
-                maxSessionLength: 300,
+                maxSessionLength: 3600,
                 maxIdleTime: 30,
             },
             apiKey: SIMLI_API_KEY,
