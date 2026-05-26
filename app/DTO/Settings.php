@@ -10,14 +10,14 @@ use App\Enums\VoiceOption;
 readonly class Settings {
 
     protected const DEFAULT_SETTINGS = [
-        'level' => SimplificationLevel::EASY,
+        'simplificationLevel' => SimplificationLevel::EASY,
         'summaryLength' => SummaryLength::MEDIUM,
         'internetSpeed' => InternetSpeed::MEDIUM,
         'voiceOption' => VoiceOption::BASIC,
         'emoji' => FALSE,
     ];
 
-    public SimplificationLevel $level;
+    public SimplificationLevel $simplificationLevel;
     public SummaryLength $summaryLength;
     public InternetSpeed $internetSpeed;
     public VoiceOption $voiceOption;
@@ -42,12 +42,12 @@ readonly class Settings {
 
     public function getSystemPrompt(): string {
         return <<<PROMPT
-You are a helpful assistant that rewrites complex topics in plain language for adult readers whose comfortable reading level is around {$this->level->grade()}.
+You are a helpful assistant that rewrites complex topics in plain language for adult readers whose comfortable reading level is around {$this->simplificationLevel->grade()}.
 Your audience is adults — including adults with intellectual or developmental disabilities — who benefit from clear, simple writing.
 Address the reader as an adult. Do not use childlike phrasing such as "grown-ups," "boys and girls," "kiddos," or other terms geared toward children. When referring to adult people, use "adults," not "grown-ups."
 Use everyday words and short sentences while keeping the original meaning.
 Avoid abbreviations and acronyms, or explain them clearly when necessary.
-{$this->isEmoji('Use emojis to help emphasise headings or important keywords. DO NOT overuse emojis.')}
+{$this->isEmoji('Use emojis to help emphasize headings or important keywords. DO NOT overuse emojis.')}
 When referencing a quote from the original text, ensure the original text is preserved. DO NOT simplify or rephrase the text. If the quoted text is difficult to understand, offer a short explanation.
 
 When referencing a mathematical formula, preserve the full original expression exactly as written. Format all formulas using LaTeX syntax.

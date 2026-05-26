@@ -43,6 +43,22 @@
                         </div>
                     </div>
 
+                    <!-- Text Size -->
+                    <div class="rounded-xl border border-card-border bg-white p-4">
+                        <label class="mb-3 block text-sm font-bold text-purple">Text Size</label>
+                        <Slider v-model="textSize" :min="0" :max="TextSizes.length - 1" :step="1" />
+                        <div class="mt-2 flex justify-between text-xs text-gray-500">
+                            <div
+                                v-for="(size, i) in TextSizes"
+                                :key="size"
+                                class="flex-1"
+                                :class="i == 0 ? 'text-left' : i == TextSizes.length - 1 ? 'text-right' : 'text-center'"
+                            >
+                                {{ size }}
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Internet Speed -->
                     <div class="rounded-xl border border-card-border bg-white p-4">
                         <label class="mb-3 block text-sm font-bold text-purple">Internet Speed</label>
@@ -92,7 +108,7 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
-import { InternetSpeeds, SimplificationLevels, SummaryLengths, VideoProviders, VoiceOptions, useAppStateStore } from '@/stores/appStateStore';
+import { InternetSpeeds, SimplificationLevels, SummaryLengths, TextSizes, VideoProviders, VoiceOptions, useAppStateStore } from '@/stores/appStateStore';
 import { CircleCheck } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { h, onMounted, onUnmounted, ref, watch } from 'vue';
@@ -168,6 +184,20 @@ watch(
 
 watch(summaryLength, () => {
     formValues.value.summaryLength = SummaryLengths[summaryLength.value[0]];
+});
+
+const textSize = ref([0]);
+
+watch(
+    () => settings.value.textSize,
+    () => {
+        textSize.value = [TextSizes.indexOf(settings.value.textSize)];
+    },
+    { immediate: true },
+);
+
+watch(textSize, () => {
+    formValues.value.textSize = TextSizes[textSize.value[0]];
 });
 
 const internetSpeed = ref([0]);

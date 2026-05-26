@@ -15,6 +15,13 @@ function isSummaryLength(value: unknown): value is SummaryLength {
     return SummaryLengths.includes(value as SummaryLength);
 }
 
+export const TextSizes = ['Small', 'Medium', 'Large'] as const;
+export type TextSize = (typeof TextSizes)[number];
+
+function isTextSize(value: unknown): value is TextSize {
+    return TextSizes.includes(value as TextSize);
+}
+
 export const InternetSpeeds = ['Slow', 'Medium', 'Fast'] as const;
 export type InternetSpeed = (typeof InternetSpeeds)[number];
 
@@ -59,6 +66,7 @@ function detectVoiceOption(internetSpeed: InternetSpeed): VoiceOption {
 export type SettingsState = {
     simplificationLevel: SimplificationLevel;
     summaryLength: SummaryLength;
+    textSize: TextSize;
     internetSpeed: InternetSpeed;
     voiceOption: VoiceOption;
     videoProvider: VideoProvider;
@@ -70,6 +78,7 @@ const detectedInternetSpeed = detectInternetSpeed();
 const defaultSettings: SettingsState = {
     simplificationLevel: 'Easy',
     summaryLength: 'Medium',
+    textSize: 'Medium',
     internetSpeed: detectedInternetSpeed,
     voiceOption: detectVoiceOption(detectedInternetSpeed),
     videoProvider: 'D-ID',
@@ -90,6 +99,10 @@ export const useAppStateStore = defineStore('app', () => {
 
             if (isSummaryLength(result.settings?.summaryLength)) {
                 settings.value.summaryLength = result.settings.summaryLength;
+            }
+
+            if (isTextSize(result.settings?.textSize)) {
+                settings.value.textSize = result.settings.textSize;
             }
 
             if (isInternetSpeed(result.settings?.internetSpeed)) {

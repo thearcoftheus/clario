@@ -26,7 +26,7 @@ class SettingsRequest extends FormRequest {
     public function rules(): array {
         return [
             'settings' => ['nullable', 'array'],
-            'settings.level' => ['nullable', Rule::enum(SimplificationLevel::class)],
+            'settings.simplificationLevel' => ['nullable', Rule::enum(SimplificationLevel::class)],
             'settings.summaryLength' => ['nullable', Rule::enum(SummaryLength::class)],
             'settings.internetSpeed' => ['nullable', Rule::enum(InternetSpeed::class)],
             'settings.voiceOption' => ['nullable', Rule::enum(VoiceOption::class)],

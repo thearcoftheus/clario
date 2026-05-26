@@ -223,14 +223,22 @@
         }
     }
 
+    /* em (not rem) so headings scale with the .size-* modifier on the wrapper. */
     h1 {
-        font-size: 1.3rem;
+        font-size: 1.3em;
     }
     h2 {
-        font-size: 1.5rem;
+        font-size: 1.5em;
     }
     h3 {
-        font-size: 1.3rem;
+        font-size: 1.3em;
+    }
+
+    &.size-small {
+        font-size: 0.875em;
+    }
+    &.size-large {
+        font-size: 1.125em;
     }
 
     hr {

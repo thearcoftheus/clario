@@ -36,7 +36,7 @@
                         style="column-fill: auto; column-gap: 2rem"
                     >
                         <div :style="{ transform: `translateX(${translateX})`, transition: 'transform 0.3s ease' }">
-                            <Markdown :content="currentItem?.simplifiedContent ?? ''" />
+                            <Markdown :content="currentItem?.simplifiedContent ?? ''" :class="textSizeClass" />
                         </div>
                     </div>
                 </div>
@@ -114,7 +114,9 @@ const historyStore = useHistoryStore();
 const { historyItems } = storeToRefs(historyStore);
 
 const appState = useAppStateStore();
-const { isExtractingContent } = storeToRefs(appState);
+const { isExtractingContent, settings } = storeToRefs(appState);
+
+const textSizeClass = computed(() => `size-${settings.value.textSize.toLowerCase()}`);
 
 const currentItem = computed(() => historyItems.value[0] ?? null);
 
