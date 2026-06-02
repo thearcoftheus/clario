@@ -1,5 +1,5 @@
 <template>
-    <div class="flex h-dvh flex-col bg-sidebar-bg">
+    <div class="bg-sidebar-bg flex h-dvh flex-col">
         <!-- Header -->
         <header class="flex shrink-0 items-center justify-between bg-white px-4 pt-4 pb-2">
             <button class="flex cursor-pointer items-center gap-2" @click="activeView = 'home'">
@@ -11,24 +11,29 @@
                 </svg>
                 <span class="text-[32px] font-bold text-black">Clario</span>
             </button>
-            <button class="flex size-[28px] cursor-pointer items-center justify-center rounded-full border border-gray-300" @click="closeSidebar" aria-label="Close sidebar">
+            <button
+                class="flex size-[28px] cursor-pointer items-center justify-center rounded-full border border-gray-300"
+                @click="closeSidebar"
+                aria-label="Close sidebar"
+            >
                 <ChevronDown class="size-4 text-gray-600" />
             </button>
         </header>
 
+        <!-- Onboarding takeover (replaces main + footer for first-time users) -->
+        <OnboardingOverlay v-if="showOnboarding" class="min-h-0 flex-1" />
+
         <!-- Main content area -->
-        <div class="min-h-0 flex-1 overflow-hidden" :class="activeView === 'home' ? 'overflow-y-auto' : ''">
+        <div v-else class="min-h-0 flex-1 overflow-hidden" :class="activeView === 'home' ? 'overflow-y-auto' : ''">
             <!-- HOME VIEW -->
             <template v-if="activeView === 'home'">
                 <!-- What You're Learning About -->
-                <section class="px-4 pb-4 pt-4">
-                    <h2 class="mb-2 text-lg font-bold leading-tight tracking-tight text-purple">
-                        What You're Learning About
-                    </h2>
-                    <div v-if="currentItem" class="overflow-hidden rounded-xl border-[0.5px] border-card-border bg-white">
+                <section class="px-4 pt-4 pb-4">
+                    <h2 class="text-purple mb-2 text-lg leading-tight font-bold tracking-tight">What You're Learning About</h2>
+                    <div v-if="currentItem" class="border-card-border overflow-hidden rounded-xl border-[0.5px] bg-white">
                         <!-- Loading state -->
                         <div v-if="currentItem.isHeadlineLoading" class="flex min-h-[80px] items-center justify-center">
-                            <Loader2 class="size-6 animate-spin text-purple" />
+                            <Loader2 class="text-purple size-6 animate-spin" />
                         </div>
                         <!-- Content (fades in) -->
                         <Transition name="fade">
@@ -40,14 +45,11 @@
                                     class="w-[80px] shrink-0 self-stretch object-cover"
                                     @error="homeImageFailed = true"
                                 />
-                                <div
-                                    v-else
-                                    class="flex w-[80px] shrink-0 items-center justify-center self-stretch bg-purple-light"
-                                >
-                                    <Newspaper class="size-7 text-purple" />
+                                <div v-else class="bg-purple-light flex w-[80px] shrink-0 items-center justify-center self-stretch">
+                                    <Newspaper class="text-purple size-7" />
                                 </div>
                                 <div class="flex flex-col justify-center gap-1 p-3">
-                                    <p class="text-base font-bold leading-tight tracking-tight text-black">
+                                    <p class="text-base leading-tight font-bold tracking-tight text-black">
                                         {{ currentItem.aiTitle || currentItem.name }}
                                     </p>
                                     <p v-if="currentItem.aiSummary || currentItem.description" class="text-sm leading-snug tracking-tight text-black">
@@ -57,50 +59,56 @@
                             </div>
                         </Transition>
                     </div>
-                    <div v-else class="flex h-[60px] items-center justify-center rounded-xl border-[0.5px] border-card-border bg-white">
+                    <div v-else class="border-card-border flex h-[60px] items-center justify-center rounded-xl border-[0.5px] bg-white">
                         <p class="text-sm text-gray-400">Navigate to a page to get started</p>
                     </div>
                 </section>
 
                 <!-- Choose How To Learn About It -->
-                <section class="px-4 pb-4 pt-4">
-                    <h2 class="mb-2 text-lg font-bold leading-tight tracking-tight text-purple">
-                        Choose How To Learn About It
-                    </h2>
+                <section class="px-4 pt-4 pb-4">
+                    <h2 class="text-purple mb-2 text-lg leading-tight font-bold tracking-tight">Choose How To Learn About It</h2>
                     <div class="flex flex-col gap-2">
                         <!-- Simple Read (full-width, purple) -->
                         <button
-                            class="flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] border-card-border bg-purple p-3 text-left"
+                            class="border-card-border bg-purple flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
                             @click="activeView = 'summary'"
                         >
-                            <div class="mr-3 flex size-[48px] shrink-0 items-center justify-center rounded-xl bg-purple-light">
+                            <div class="bg-purple-light mr-3 flex size-[48px] shrink-0 items-center justify-center rounded-xl">
                                 <img :src="bookIcon" alt="" class="size-[36px]" />
                             </div>
                             <div class="flex-1">
-                                <p class="text-base font-bold leading-tight tracking-tight text-white">Simple Read</p>
+                                <p class="text-base leading-tight font-bold tracking-tight text-white">Simple Read</p>
                                 <p class="mt-0.5 text-sm text-white">Simpler words, bigger text, pictures</p>
                             </div>
                             <div class="flex shrink-0 flex-col items-end gap-1">
                                 <span class="text-sm font-medium text-white">Tap to start</span>
-                                <span class="rounded-full border border-white px-2 py-0.5 text-[9px] font-bold text-white">Recommended for you</span>
+                                <span
+                                    v-if="recommendedFormFactors.includes('summary')"
+                                    class="rounded-full border border-white px-2 py-0.5 text-[9px] font-bold text-white"
+                                    >Recommended for you</span
+                                >
                             </div>
                         </button>
 
                         <!-- Listen (full-width, purple) -->
                         <button
-                            class="flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] border-card-border bg-purple p-3 text-left"
+                            class="border-card-border bg-purple flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
                             @click="activeView = 'narrate'"
                         >
-                            <div class="mr-3 flex size-[48px] shrink-0 items-center justify-center rounded-xl bg-purple-light">
+                            <div class="bg-purple-light mr-3 flex size-[48px] shrink-0 items-center justify-center rounded-xl">
                                 <img :src="earSoundIcon" alt="" class="size-[36px]" />
                             </div>
                             <div class="flex-1">
-                                <p class="text-base font-bold leading-tight tracking-tight text-white">Listen</p>
+                                <p class="text-base leading-tight font-bold tracking-tight text-white">Listen</p>
                                 <p class="mt-0.5 text-sm text-white">Read out loud</p>
                             </div>
                             <div class="flex shrink-0 flex-col items-end gap-1">
                                 <span class="text-sm font-medium text-white">Tap to start</span>
-                                <span class="rounded-full border border-white px-2 py-0.5 text-[9px] font-bold text-white">Recommended for you</span>
+                                <span
+                                    v-if="recommendedFormFactors.includes('narrate')"
+                                    class="rounded-full border border-white px-2 py-0.5 text-[9px] font-bold text-white"
+                                    >Recommended for you</span
+                                >
                             </div>
                         </button>
 
@@ -108,26 +116,36 @@
                         <div class="flex gap-2">
                             <!-- Ask -->
                             <button
-                                class="flex flex-1 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-card-border bg-purple-light p-3 text-left"
+                                class="border-card-border bg-purple-light flex flex-1 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
                                 @click="showChatModal = true"
                             >
-                                <div class="mb-2 flex size-[36px] items-center justify-center rounded-xl bg-sidebar-bg">
+                                <div class="bg-sidebar-bg mb-2 flex size-[36px] items-center justify-center rounded-xl">
                                     <img :src="personRaisedHandIcon" alt="" class="size-[36px]" />
                                 </div>
-                                <p class="text-base font-bold leading-tight tracking-tight text-purple">Ask</p>
-                                <p class="mt-0.5 text-sm text-purple">Ask Questions</p>
+                                <p class="text-purple text-base leading-tight font-bold tracking-tight">Ask</p>
+                                <p class="text-purple mt-0.5 text-sm">Ask Questions</p>
+                                <span
+                                    v-if="recommendedFormFactors.includes('chat')"
+                                    class="border-purple text-purple mt-2 inline-block self-start rounded-full border px-2 py-0.5 text-[9px] font-bold"
+                                    >Recommended for you</span
+                                >
                             </button>
 
                             <!-- Watch -->
                             <button
-                                class="flex flex-1 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-card-border bg-purple-light p-3 text-left"
+                                class="border-card-border bg-purple-light flex flex-1 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
                                 @click="activeView = 'avatar'"
                             >
-                                <div class="mb-2 flex size-[36px] items-center justify-center rounded-xl bg-sidebar-bg">
+                                <div class="bg-sidebar-bg mb-2 flex size-[36px] items-center justify-center rounded-xl">
                                     <img :src="explainerIcon" alt="" class="size-[36px]" />
                                 </div>
-                                <p class="text-base font-bold leading-tight tracking-tight text-purple">Watch</p>
-                                <p class="mt-0.5 text-sm text-purple">An explainer video</p>
+                                <p class="text-purple text-base leading-tight font-bold tracking-tight">Watch</p>
+                                <p class="text-purple mt-0.5 text-sm">An explainer video</p>
+                                <span
+                                    v-if="recommendedFormFactors.includes('avatar')"
+                                    class="border-purple text-purple mt-2 inline-block self-start rounded-full border px-2 py-0.5 text-[9px] font-bold"
+                                    >Recommended for you</span
+                                >
                             </button>
                         </div>
                     </div>
@@ -140,21 +158,23 @@
             <WatchPane v-else-if="activeView === 'avatar'" class="h-full" />
         </div>
 
-        <!-- Footer -->
-        <footer class="flex shrink-0 items-center justify-between bg-white px-4 py-2">
-            <button class="cursor-pointer text-sm text-black underline" @click="helpDialog?.open()">Help</button>
-            <button class="cursor-pointer text-sm text-black underline" @click="aboutDialog?.open()">About</button>
-            <button class="flex cursor-pointer items-center gap-1" @click="settingsDialog?.open()">
-                <img :src="settingsIcon" alt="" class="size-[14px]" />
-                <span class="text-sm text-black underline">Advanced Settings</span>
-            </button>
-        </footer>
+        <template v-if="!showOnboarding">
+            <!-- Footer -->
+            <footer class="flex shrink-0 items-center justify-between bg-white px-4 py-2">
+                <button class="cursor-pointer text-sm text-black underline" @click="helpDialog?.open()">Help</button>
+                <button class="cursor-pointer text-sm text-black underline" @click="aboutDialog?.open()">About</button>
+                <button class="flex cursor-pointer items-center gap-1" @click="settingsDialog?.open()">
+                    <img :src="settingsIcon" alt="" class="size-[14px]" />
+                    <span class="text-sm text-black underline">Advanced Settings</span>
+                </button>
+            </footer>
 
-        <SettingsDialog ref="settingsDialog" />
-        <HelpDialog ref="helpDialog" />
-        <AboutDialog ref="aboutDialog" />
+            <SettingsDialog ref="settingsDialog" />
+            <HelpDialog ref="helpDialog" />
+            <AboutDialog ref="aboutDialog" />
 
-        <ChatModal :open="showChatModal" @close="showChatModal = false" />
+            <ChatModal :open="showChatModal" @close="showChatModal = false" />
+        </template>
     </div>
 
     <HistoryItemHeadline v-for="item in historyItems" :key="'headline-' + item.date.unix()" :item="item" />
@@ -168,12 +188,13 @@ import AboutDialog from '@/components/AboutDialog.vue';
 import ChatModal from '@/components/ChatModal.vue';
 import EasyReadPane from '@/components/EasyReadPane.vue';
 import HelpDialog from '@/components/HelpDialog.vue';
-import SettingsDialog from '@/components/SettingsDialog.vue';
 import HistoryItemHeadline from '@/components/HistoryItemHeadline.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
 import ListenPane from '@/components/ListenPane.vue';
-import WatchPane from '@/components/WatchPane.vue';
+import OnboardingOverlay from '@/components/onboarding/OnboardingOverlay.vue';
+import SettingsDialog from '@/components/SettingsDialog.vue';
 import { Toaster } from '@/components/ui/sonner';
+import WatchPane from '@/components/WatchPane.vue';
 import { NavigationKey, type View } from '@/composables/useNavigation';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
@@ -184,8 +205,8 @@ import 'vue-sonner/style.css';
 
 import bookIcon from '@/../icons/sidebar/book.svg';
 import earSoundIcon from '@/../icons/sidebar/ear-sound.svg';
-import personRaisedHandIcon from '@/../icons/sidebar/person-raised-hand.svg';
 import explainerIcon from '@/../icons/sidebar/explainer.svg';
+import personRaisedHandIcon from '@/../icons/sidebar/person-raised-hand.svg';
 import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const activeView = ref<View>('home');
@@ -203,7 +224,9 @@ provide(NavigationKey, {
 });
 
 const appStateStore = useAppStateStore();
-const { settings } = storeToRefs(appStateStore);
+const { settings, isLoadingSettings, recommendedFormFactors } = storeToRefs(appStateStore);
+
+const showOnboarding = computed(() => !isLoadingSettings.value && !settings.value.hasCompletedOnboarding);
 
 const historyStore = useHistoryStore();
 const { historyItems } = storeToRefs(historyStore);
@@ -220,7 +243,12 @@ const currentItem = computed(() => historyItems.value[0] ?? null);
 
 // Thumbnail load-failure fallback: reset on article change.
 const homeImageFailed = ref(false);
-watch(() => currentItem.value?.image, () => { homeImageFailed.value = false; });
+watch(
+    () => currentItem.value?.image,
+    () => {
+        homeImageFailed.value = false;
+    },
+);
 </script>
 
 <style lang="scss">

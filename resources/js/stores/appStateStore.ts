@@ -1,11 +1,22 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 export const SimplificationLevels = ['Easy', 'Moderate', 'Challenging'] as const;
 export type SimplificationLevel = (typeof SimplificationLevels)[number];
 
 function isSimplficiationLevel(value: unknown): value is SimplificationLevel {
     return SimplificationLevels.includes(value as SimplificationLevel);
+}
+
+export const FormFactors = ['summary', 'narrate', 'avatar', 'chat'] as const;
+export type FormFactor = (typeof FormFactors)[number];
+
+function isFormFactor(value: unknown): value is FormFactor {
+    return FormFactors.includes(value as FormFactor);
+}
+
+function isFormFactorArray(value: unknown): value is FormFactor[] {
+    return Array.isArray(value) && value.every(isFormFactor);
 }
 
 export const SummaryLengths = ['Short', 'Medium', 'Long'] as const;
@@ -71,6 +82,8 @@ export type SettingsState = {
     voiceOption: VoiceOption;
     videoProvider: VideoProvider;
     emoji: boolean;
+    hasCompletedOnboarding: boolean;
+    preferredFormFactors: FormFactor[];
 };
 
 const detectedInternetSpeed = detectInternetSpeed();
@@ -83,15 +96,26 @@ const defaultSettings: SettingsState = {
     voiceOption: detectVoiceOption(detectedInternetSpeed),
     videoProvider: 'D-ID',
     emoji: true,
+    hasCompletedOnboarding: false,
+    preferredFormFactors: [],
 };
 
 export const useAppStateStore = defineStore('app', () => {
     const settings = ref<SettingsState>(defaultSettings);
     const isExtractingContent = ref(true);
+    const isLoadingSettings = ref(true);
 
     function loadSettingsFromStorage() {
         chrome.storage.local.get<{ settings?: Partial<SettingsState> }>('settings', result => {
-            if (!result.settings) return;
+            if (chrome.runtime.lastError) {
+                isLoadingSettings.value = false;
+                return;
+            }
+
+            if (!result.settings) {
+                isLoadingSettings.value = false;
+                return;
+            }
 
             if (isSimplficiationLevel(result.settings?.simplificationLevel)) {
                 settings.value.simplificationLevel = result.settings.simplificationLevel;
@@ -120,23 +144,42 @@ export const useAppStateStore = defineStore('app', () => {
             if (typeof result.settings.emoji === 'boolean') {
                 settings.value.emoji = result.settings.emoji;
             }
+
+            if (typeof result.settings.hasCompletedOnboarding === 'boolean') {
+                settings.value.hasCompletedOnboarding = result.settings.hasCompletedOnboarding;
+            }
+
+            if (isFormFactorArray(result.settings.preferredFormFactors)) {
+                settings.value.preferredFormFactors = result.settings.preferredFormFactors;
+            }
+
+            isLoadingSettings.value = false;
         });
     }
 
     loadSettingsFromStorage();
 
-    function updateSettings(newSettings: Partial<SettingsState> = {}) {
+    function updateSettings(newSettings: Partial<SettingsState> = {}): Promise<void> {
         settings.value = {
             ...settings.value,
             ...newSettings,
         };
 
-        chrome.storage.local.set({ settings: settings.value });
+        // Deep-clone to plain JSON before persisting: Vue 3.5's reactive array
+        // Proxies don't always structured-clone cleanly into chrome.storage,
+        // which silently drops nested arrays like preferredFormFactors.
+        return chrome.storage.local.set({ settings: JSON.parse(JSON.stringify(settings.value)) });
     }
+
+    // Drives "Recommended for you" badges on the home screen. If the user
+    // skipped Q2 of onboarding, this is empty and no card shows a badge.
+    const recommendedFormFactors = computed<FormFactor[]>(() => settings.value.preferredFormFactors);
 
     return {
         settings,
         isExtractingContent,
+        isLoadingSettings,
+        recommendedFormFactors,
         updateSettings,
         loadSettingsFromStorage,
     };

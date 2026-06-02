@@ -166,6 +166,7 @@ watch(
     () => {
         simplificationLevel.value = [SimplificationLevels.indexOf(settings.value.simplificationLevel)];
     },
+    { immediate: true },
 );
 
 watch(simplificationLevel, () => {
