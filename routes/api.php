@@ -21,14 +21,8 @@ Route::middleware([ValidateApiKey::class, TrackApiMetrics::class])->group(functi
     Route::post('/narrate', [AiController::class, 'narrate'])->name('narrate');
     Route::post('/narrate-sync', [AiController::class, 'narrateSync'])->name('narrate-sync');
 
-    // Avatar video generation (D-ID)
+    // Avatar video generation (Simli + Cartesia)
     Route::post('/avatar/script', [AvatarController::class, 'prepareScript'])->name('avatar.script');
-    Route::post('/avatar/generate', [AvatarController::class, 'generate'])->name('avatar.generate');
-    Route::get('/avatar/status/{jobId}', [AvatarController::class, 'status'])->name('avatar.status');
-
-    // Simli text-to-video generation
     Route::post('/avatar/simli/generate', [AvatarController::class, 'simliGenerate'])->name('avatar.simli.generate');
-
-    // Cartesia TTS for Simli streaming
     Route::post('/avatar/cartesia/tts', [AvatarController::class, 'cartesiaTTS'])->name('avatar.cartesia.tts');
 });

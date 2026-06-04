@@ -2,10 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\InternetSpeed;
 use App\Enums\SimplificationLevel;
 use App\Enums\SummaryLength;
-use App\Enums\VoiceOption;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,8 +26,6 @@ class SettingsRequest extends FormRequest {
             'settings' => ['nullable', 'array'],
             'settings.simplificationLevel' => ['nullable', Rule::enum(SimplificationLevel::class)],
             'settings.summaryLength' => ['nullable', Rule::enum(SummaryLength::class)],
-            'settings.internetSpeed' => ['nullable', Rule::enum(InternetSpeed::class)],
-            'settings.voiceOption' => ['nullable', Rule::enum(VoiceOption::class)],
             'settings.emoji' => ['nullable', 'boolean']
         ];
     }

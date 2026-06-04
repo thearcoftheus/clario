@@ -59,30 +59,6 @@
                         </div>
                     </div>
 
-                    <!-- Internet Speed -->
-                    <div class="rounded-xl border border-card-border bg-white p-4">
-                        <label class="mb-3 block text-sm font-bold text-purple">Internet Speed</label>
-                        <Slider v-model="internetSpeed" :min="0" :max="InternetSpeeds.length - 1" :step="1" />
-                        <div class="mt-2 flex justify-between text-xs text-gray-500">
-                            <div
-                                v-for="(speed, i) in InternetSpeeds"
-                                :key="speed"
-                                class="flex-1"
-                                :class="i == 0 ? 'text-left' : i == InternetSpeeds.length - 1 ? 'text-right' : 'text-center'"
-                            >
-                                {{ speed }}
-                            </div>
-                        </div>
-                        <p class="mt-2 text-xs text-gray-400">
-                            <template v-if="networkInfo">
-                                Detected: {{ networkInfo.downlink }} Mbps / {{ networkInfo.effectiveType }}
-                            </template>
-                            <template v-else>
-                                Network info unavailable
-                            </template>
-                        </p>
-                    </div>
-
                     <!-- Emoji Toggle -->
                     <div class="flex items-center gap-3 rounded-xl border border-card-border bg-white p-4">
                         <Checkbox id="emoji" v-model="formValues.emoji" />
@@ -108,51 +84,17 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
-import { InternetSpeeds, SimplificationLevels, SummaryLengths, TextSizes, VideoProviders, VoiceOptions, useAppStateStore } from '@/stores/appStateStore';
+import { SimplificationLevels, SummaryLengths, TextSizes, useAppStateStore } from '@/stores/appStateStore';
 import { CircleCheck } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { h, onMounted, onUnmounted, ref, watch } from 'vue';
+import { h, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import settingsIcon from '@/../icons/sidebar/settings.svg';
 
-interface NetworkInfo {
-    downlink: number;
-    effectiveType: string;
-    type: string;
-}
-
 const isOpen = ref(false);
 
 defineExpose({ open: () => { isOpen.value = true; } });
-
-const networkInfo = ref<NetworkInfo | null>(null);
-
-function updateNetworkInfo() {
-    const connection = (navigator as any).connection;
-    if (connection) {
-        networkInfo.value = {
-            downlink: connection.downlink,
-            effectiveType: connection.effectiveType,
-            type: connection.type ?? 'unknown',
-        };
-    }
-}
-
-onMounted(() => {
-    updateNetworkInfo();
-    const connection = (navigator as any).connection;
-    if (connection) {
-        connection.addEventListener('change', updateNetworkInfo);
-    }
-});
-
-onUnmounted(() => {
-    const connection = (navigator as any).connection;
-    if (connection) {
-        connection.removeEventListener('change', updateNetworkInfo);
-    }
-});
 
 const appState = useAppStateStore();
 const { settings } = storeToRefs(appState);
@@ -199,48 +141,6 @@ watch(
 
 watch(textSize, () => {
     formValues.value.textSize = TextSizes[textSize.value[0]];
-});
-
-const internetSpeed = ref([0]);
-
-watch(
-    () => settings.value.internetSpeed,
-    () => {
-        internetSpeed.value = [InternetSpeeds.indexOf(settings.value.internetSpeed)];
-    },
-    { immediate: true },
-);
-
-watch(internetSpeed, () => {
-    formValues.value.internetSpeed = InternetSpeeds[internetSpeed.value[0]];
-});
-
-const voiceOption = ref([0]);
-
-watch(
-    () => settings.value.voiceOption,
-    () => {
-        voiceOption.value = [VoiceOptions.indexOf(settings.value.voiceOption)];
-    },
-    { immediate: true },
-);
-
-watch(voiceOption, () => {
-    formValues.value.voiceOption = VoiceOptions[voiceOption.value[0]];
-});
-
-const videoProvider = ref([0]);
-
-watch(
-    () => settings.value.videoProvider,
-    () => {
-        videoProvider.value = [VideoProviders.indexOf(settings.value.videoProvider)];
-    },
-    { immediate: true },
-);
-
-watch(videoProvider, () => {
-    formValues.value.videoProvider = VideoProviders[videoProvider.value[0]];
 });
 
 function onSubmit() {

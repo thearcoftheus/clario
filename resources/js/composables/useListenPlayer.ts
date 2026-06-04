@@ -1,5 +1,6 @@
 import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
+import { useAppStateStore } from '@/stores/appStateStore';
 import { useListenStore } from '@/stores/listenStore';
 import axios from 'axios';
 import { onBeforeUnmount, ref } from 'vue';
@@ -11,6 +12,7 @@ interface Timepoint {
 
 export function useListenPlayer() {
     const listenStore = useListenStore();
+    const appStateStore = useAppStateStore();
 
     const isGenerating = ref(false);
     const isPlaying = ref(false);
@@ -25,7 +27,7 @@ export function useListenPlayer() {
 
     const words = ref<string[]>([]);
     const timepoints = ref<Timepoint[]>([]);
-    const speed = ref(1);
+    const speed = ref(appStateStore.settings.playbackSpeed);
 
     let audioElement: HTMLAudioElement | null = null;
     let blobUrl: string | null = null;
@@ -271,6 +273,7 @@ export function useListenPlayer() {
         if (audioElement) {
             audioElement.playbackRate = rate;
         }
+        appStateStore.updateSettings({ playbackSpeed: rate });
     }
 
     function cleanup() {

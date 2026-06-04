@@ -33,6 +33,21 @@
                     />
                     <audio ref="audioRef" autoplay />
 
+                    <!-- Caption overlay (current sentence, synced via Cartesia timepoints).
+                         Sits at the bottom of the video; active word highlighted in
+                         purple-light to stay consistent with the Listen pane semantic. -->
+                    <div
+                        v-if="currentSentence && currentSentence.length > 0"
+                        class="pointer-events-none absolute inset-x-0 bottom-0 flex flex-wrap justify-center gap-x-[0.3em] gap-y-1 bg-black/70 px-4 py-2 text-center"
+                    >
+                        <span
+                            v-for="word in currentSentence"
+                            :key="word.index"
+                            class="rounded px-0.5 text-base leading-snug transition-colors duration-100"
+                            :class="word.index === currentWordIndex ? 'bg-purple-light text-purple' : 'text-white'"
+                        >{{ word.text }}</span>
+                    </div>
+
                     <!-- Error overlay -->
                     <div v-if="simliStatus === 'error'" class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 p-4 text-center">
                         <p class="mb-2 text-sm font-medium text-white">Something went wrong</p>
@@ -139,13 +154,13 @@
 import CompactArticleCard from '@/components/CompactArticleCard.vue';
 import LearnAnotherWay from '@/components/LearnAnotherWay.vue';
 import route from '@/helpers/route';
-import { useAvatarStore } from '@/stores/avatarStore';
+import { useAvatarStore, type Timepoint } from '@/stores/avatarStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { SimliClient, generateSimliSessionToken, generateIceServers } from 'simli-client';
 import axios from 'axios';
 import { Loader2, Pause, Play } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import explainerIcon from '@/../icons/sidebar/explainer.svg';
 
@@ -170,10 +185,16 @@ let simliClient: SimliClient | null = null;
 let cachedAudio: Uint8Array | null = null;
 let disposed = false;
 
+// Caption state — driven by Cartesia word-level timepoints, synced via audioRef.
+const captionTimepoints = ref<Timepoint[]>([]);
+const currentWordIndex = ref(-1);
+let captionFrameId: number | null = null;
+
 onMounted(() => {
     const url = currentItem.value?.url;
     if (url && avatarStore.cartesiaAudioForUrl === url && avatarStore.cartesiaAudio) {
         cachedAudio = avatarStore.cartesiaAudio;
+        captionTimepoints.value = avatarStore.cartesiaTimepoints;
     }
 });
 
@@ -214,20 +235,28 @@ async function startGeneration() {
             // Reuse cached audio — skip the slow TTS step
             pcm16Audio = cachedAudio;
         } else {
-            // Fetch Cartesia audio first (slow step)
+            // Fetch Cartesia audio + word-level timepoints (slow step). Backend
+            // returns { audio: base64Pcm16, timepoints: [{markName, timeSeconds}] }.
             simliStatus.value = 'preparing';
             const response = await axios.post(
                 route('avatar.cartesia.tts'),
                 { text: scriptText.value },
-                { responseType: 'arraybuffer' },
             );
-            pcm16Audio = new Uint8Array(response.data);
+
+            const audioBase64: string = response.data.audio;
+            const timepoints: Timepoint[] = response.data.timepoints ?? [];
+
+            const binary = atob(audioBase64);
+            pcm16Audio = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                pcm16Audio[i] = binary.charCodeAt(i);
+            }
 
             // Cache to the global store regardless of local component lifecycle —
             // if the user navigated away mid-fetch, the next visit can still reuse it.
             const articleUrl = currentItem.value?.url;
             if (articleUrl) {
-                avatarStore.cacheCartesiaAudio({ audio: pcm16Audio, url: articleUrl });
+                avatarStore.cacheCartesiaAudio({ audio: pcm16Audio, timepoints, url: articleUrl });
             }
 
             // Bail out if the user navigated away during the slow Cartesia fetch.
@@ -236,6 +265,7 @@ async function startGeneration() {
             if (disposed) return;
 
             cachedAudio = pcm16Audio;
+            captionTimepoints.value = timepoints;
         }
 
         // Establish WebRTC connection
@@ -326,8 +356,136 @@ function resetSimli() {
     simliError.value = '';
 }
 
+// Group caption words into SENTENCES by walking scriptText's sentence boundaries
+// in lockstep with the Cartesia timepoints. Sentence-level chunking keeps the
+// bottom-of-video overlay compact (1–2 lines at a time) — full-transcript display
+// was too tall to fit within the sidebar without scrolling.
+const captionSentences = computed<{ text: string; index: number }[][]>(() => {
+    if (captionTimepoints.value.length === 0) return [];
+    if (!scriptText.value) return [];
+
+    // Flatten paragraph breaks so sentence splitting works across them, then split
+    // on sentence-ending punctuation (kept attached via lookbehind).
+    const flat = scriptText.value.replace(/\s+/g, ' ').trim();
+    const sentences = flat.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+
+    const result: { text: string; index: number }[][] = [];
+    let globalIndex = 0;
+
+    for (const sentence of sentences) {
+        const sentenceWords = sentence.split(/\s+/).filter(w => w.length > 0);
+        const sentenceResult: { text: string; index: number }[] = [];
+        for (let i = 0; i < sentenceWords.length; i++) {
+            if (globalIndex < captionTimepoints.value.length) {
+                sentenceResult.push({
+                    text: captionTimepoints.value[globalIndex].markName,
+                    index: globalIndex,
+                });
+                globalIndex++;
+            }
+        }
+        if (sentenceResult.length > 0) result.push(sentenceResult);
+    }
+
+    // Trailing remainder (tokenisation drift): drop leftover timepoints into a
+    // final sentence so nothing disappears from the captions.
+    if (globalIndex < captionTimepoints.value.length) {
+        const remaining: { text: string; index: number }[] = [];
+        while (globalIndex < captionTimepoints.value.length) {
+            remaining.push({
+                text: captionTimepoints.value[globalIndex].markName,
+                index: globalIndex,
+            });
+            globalIndex++;
+        }
+        result.push(remaining);
+    }
+
+    return result;
+});
+
+const currentSentenceIndex = computed(() => {
+    if (currentWordIndex.value < 0) return -1;
+    for (let i = 0; i < captionSentences.value.length; i++) {
+        const sent = captionSentences.value[i];
+        if (sent.length === 0) continue;
+        const firstIdx = sent[0].index;
+        const lastIdx = sent[sent.length - 1].index;
+        if (currentWordIndex.value >= firstIdx && currentWordIndex.value <= lastIdx) {
+            return i;
+        }
+    }
+    return -1;
+});
+
+const currentSentence = computed(() => {
+    if (currentSentenceIndex.value < 0) return null;
+    return captionSentences.value[currentSentenceIndex.value] ?? null;
+});
+
+function updateCurrentWordForTime(time: number) {
+    if (captionTimepoints.value.length === 0) {
+        currentWordIndex.value = -1;
+        return;
+    }
+    let lo = 0;
+    let hi = captionTimepoints.value.length - 1;
+    let result = -1;
+    while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (captionTimepoints.value[mid].timeSeconds <= time) {
+            result = mid;
+            lo = mid + 1;
+        } else {
+            hi = mid - 1;
+        }
+    }
+    currentWordIndex.value = result;
+}
+
+function startCaptionLoop() {
+    function tick() {
+        if (!audioRef.value || simliStatus.value !== 'streaming' || isPaused.value) {
+            captionFrameId = null;
+            return;
+        }
+        updateCurrentWordForTime(audioRef.value.currentTime);
+        captionFrameId = requestAnimationFrame(tick);
+    }
+    if (captionFrameId === null) {
+        captionFrameId = requestAnimationFrame(tick);
+    }
+}
+
+function stopCaptionLoop() {
+    if (captionFrameId !== null) {
+        cancelAnimationFrame(captionFrameId);
+        captionFrameId = null;
+    }
+}
+
+watch(simliStatus, (val) => {
+    if (val === 'streaming' && !isPaused.value) {
+        startCaptionLoop();
+    } else {
+        stopCaptionLoop();
+        if (val !== 'streaming') {
+            currentWordIndex.value = -1;
+        }
+    }
+});
+
+watch(isPaused, (paused) => {
+    if (paused) {
+        stopCaptionLoop();
+    } else if (simliStatus.value === 'streaming') {
+        startCaptionLoop();
+    }
+});
+
 onBeforeUnmount(() => {
     disposed = true;
+    stopCaptionLoop();
     if (simliClient) {
         simliClient.stop();
         simliClient = null;

@@ -33,71 +33,28 @@ function isTextSize(value: unknown): value is TextSize {
     return TextSizes.includes(value as TextSize);
 }
 
-export const InternetSpeeds = ['Slow', 'Medium', 'Fast'] as const;
-export type InternetSpeed = (typeof InternetSpeeds)[number];
-
-function isInternetSpeed(value: unknown): value is InternetSpeed {
-    return InternetSpeeds.includes(value as InternetSpeed);
-}
-
-export const VoiceOptions = ['Basic', 'Advanced'] as const;
-export type VoiceOption = (typeof VoiceOptions)[number];
-
-function isVoiceOption(value: unknown): value is VoiceOption {
-    return VoiceOptions.includes(value as VoiceOption);
-}
-
-export const VideoProviders = ['D-ID', 'Simli'] as const;
-export type VideoProvider = (typeof VideoProviders)[number];
-
-function isVideoProvider(value: unknown): value is VideoProvider {
-    return VideoProviders.includes(value as VideoProvider);
-}
-
-function detectInternetSpeed(): InternetSpeed {
-    const connection = (navigator as any).connection;
-    if (!connection || typeof connection.downlink !== 'number') {
-        return 'Medium'; // Default if API unavailable
-    }
-
-    const downlink = connection.downlink;
-    if (downlink < 2) {
-        return 'Slow';
-    } else if (downlink <= 6) {
-        return 'Medium';
-    } else {
-        return 'Fast';
-    }
-}
-
-function detectVoiceOption(internetSpeed: InternetSpeed): VoiceOption {
-    return internetSpeed === 'Fast' ? 'Advanced' : 'Basic';
-}
-
 export type SettingsState = {
     simplificationLevel: SimplificationLevel;
     summaryLength: SummaryLength;
     textSize: TextSize;
-    internetSpeed: InternetSpeed;
-    voiceOption: VoiceOption;
-    videoProvider: VideoProvider;
     emoji: boolean;
     hasCompletedOnboarding: boolean;
     preferredFormFactors: FormFactor[];
+    playbackSpeed: number;
 };
 
-const detectedInternetSpeed = detectInternetSpeed();
+function isPlaybackSpeed(value: unknown): value is number {
+    return typeof value === 'number' && value >= 0.5 && value <= 2;
+}
 
 const defaultSettings: SettingsState = {
     simplificationLevel: 'Easy',
     summaryLength: 'Medium',
     textSize: 'Medium',
-    internetSpeed: detectedInternetSpeed,
-    voiceOption: detectVoiceOption(detectedInternetSpeed),
-    videoProvider: 'D-ID',
-    emoji: true,
+    emoji: false,
     hasCompletedOnboarding: false,
     preferredFormFactors: [],
+    playbackSpeed: 1,
 };
 
 export const useAppStateStore = defineStore('app', () => {
@@ -129,18 +86,6 @@ export const useAppStateStore = defineStore('app', () => {
                 settings.value.textSize = result.settings.textSize;
             }
 
-            if (isInternetSpeed(result.settings?.internetSpeed)) {
-                settings.value.internetSpeed = result.settings.internetSpeed;
-            }
-
-            if (isVoiceOption(result.settings?.voiceOption)) {
-                settings.value.voiceOption = result.settings.voiceOption;
-            }
-
-            if (isVideoProvider(result.settings?.videoProvider)) {
-                settings.value.videoProvider = result.settings.videoProvider;
-            }
-
             if (typeof result.settings.emoji === 'boolean') {
                 settings.value.emoji = result.settings.emoji;
             }
@@ -151,6 +96,10 @@ export const useAppStateStore = defineStore('app', () => {
 
             if (isFormFactorArray(result.settings.preferredFormFactors)) {
                 settings.value.preferredFormFactors = result.settings.preferredFormFactors;
+            }
+
+            if (isPlaybackSpeed(result.settings.playbackSpeed)) {
+                settings.value.playbackSpeed = result.settings.playbackSpeed;
             }
 
             isLoadingSettings.value = false;

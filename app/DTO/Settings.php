@@ -2,25 +2,19 @@
 
 namespace App\DTO;
 
-use App\Enums\InternetSpeed;
 use App\Enums\SimplificationLevel;
 use App\Enums\SummaryLength;
-use App\Enums\VoiceOption;
 
 readonly class Settings {
 
     protected const DEFAULT_SETTINGS = [
         'simplificationLevel' => SimplificationLevel::EASY,
         'summaryLength' => SummaryLength::MEDIUM,
-        'internetSpeed' => InternetSpeed::MEDIUM,
-        'voiceOption' => VoiceOption::BASIC,
         'emoji' => FALSE,
     ];
 
     public SimplificationLevel $simplificationLevel;
     public SummaryLength $summaryLength;
-    public InternetSpeed $internetSpeed;
-    public VoiceOption $voiceOption;
     public bool $emoji;
 
     public function __construct(array|null $settings = []) {

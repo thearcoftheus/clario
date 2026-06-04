@@ -75,7 +75,9 @@ All routes require API key authentication via `ValidateApiKey` middleware:
 - `POST /api/chat` - Chat with AI (streaming)
 - `POST /api/narrate` - Text-to-speech audio
 - `POST /api/narrate-sync` - Text-to-speech with word-level timepoints for synchronized highlighting (JSON response)
-- `POST /api/avatar/*` - Avatar video generation (D-ID and Simli)
+- `POST /api/avatar/script` - Prepare the easy-read summary as a TTS-friendly script (markdown stripped, no preamble)
+- `POST /api/avatar/cartesia/tts` - Generate PCM16 audio from text via Cartesia TTS (streamed to Simli)
+- `POST /api/avatar/simli/generate` - End-to-end Simli + Cartesia video generation (unused by current frontend; kept available)
 
 ### UI Components
 Uses shadcn-vue style components in `resources/js/components/ui/`. Built with reka-ui primitives, Tailwind CSS v4, and class-variance-authority.
@@ -108,7 +110,24 @@ Note: the sidebar's `PageSummary.vue` does its own summary display independently
 
 None of this code is called at runtime. It can be safely deleted if the feature is permanently dropped, or wired back in if needed.
 
+## Removed Settings: internetSpeed and voiceOption
+
+These two settings were removed entirely in 0.3.2 after audit revealed nothing consumed them. They had been carried since earlier prototypes where `internetSpeed` was meant to gate `voiceOption` (Basic vs Advanced TTS), but the current `NarrationService` doesn't branch on voice quality. Both the frontend slider for Internet Speed and the auto-detection of `navigator.connection.downlink` are gone.
+
+If reintroducing TTS-quality control later, prefer a single explicit user-facing setting (e.g., "Voice quality") rather than two coupled fields. Do not restore the auto-detection of `navigator.connection.downlink` — it was unreliable across Chrome versions and never actually changed user-visible behavior.
+
+## Removed: D-ID avatar provider
+
+The "Watch" feature originally supported two video providers selected by a `videoProvider` setting (`'D-ID' | 'Simli'`). The old `AvatarPane.vue` switched between them. During the WatchPane redesign, Simli became the only path users see, but the D-ID code lingered as dead branches for several releases. The full chain was removed in 0.3.2:
+
+- **Backend**: `AvatarController::generate()`, `AvatarController::status()`, `condenseSummary()` and its 1000-char `MAX_SUMMARY_LENGTH` cap, `getAuthHeader()`, `getReadingLevelGrade()`, `READING_LEVELS`, `PRESENTER_ID`. The `POST /api/avatar/generate` and `POST /api/avatar/status/{jobId}` routes. Title-extraction helpers (`determineTitle`, `extractTitleFromSummary`, `cleanPageTitle`) — they were only used to build the preamble "This article is called X. Here's what it's about." which was itself removed earlier (commit 5bd3a92) so audio + video would match the easy-read summary exactly.
+- **Frontend**: `AvatarPane.vue` (the old provider switcher), `avatarStore.ts`'s polling state (`status`, `videoUrl`, `jobId`, `errorMessage`, `generateAvatarVideo`, `startPolling`, `stopPolling`, `MAX_POLLS`), the `videoProvider` setting field along with `VideoProviders` const/`VideoProvider` type/`isVideoProvider` validator.
+- **Environment**: `DID_API_KEY` is no longer read by the app. Safe to remove from `.env` / deployment configs.
+
+If reviving D-ID later: WatchPane.vue is Simli-only by design. Don't reintroduce `videoProvider` as a settings-level switch — pick the provider at the route or component level instead. The condense step was a D-ID cost cap; Simli pricing is structured differently (per-minute streaming, not per-clip-length), so don't blindly port it across.
+
 Backend AI/TTS keys:
 - `GEMINI_API_KEY` - For AI agents via Prism
 - `GOOGLE_APPLICATION_CREDENTIALS` - For Cloud Text-to-Speech
-- `DID_API_KEY` - For D-ID avatar generation
+- `SIMLI_API_KEY` - For Simli lip-sync video generation
+- `CARTESIA_API_KEY` - For Cartesia text-to-speech (drives Simli audio)

@@ -50,10 +50,22 @@ export const useHistoryStore = defineStore('store', function () {
         historyItems.value = historyItems.value.filter(existingItem => existingItem.url !== item.url);
     }
 
-    watch(settings, () => {
-        if (historyItems.value.length === 0) return;
-        historyItems.value[0].date = dayjs();
-    });
+    // Bump the latest history item's date to force a regeneration when a
+    // content-affecting setting changes (this remounts HistoryItemHeadline /
+    // HistoryItemStream via their date-keyed v-for in Sidebar.vue). Watch only
+    // the fields that actually flow through to the backend prompt — not display
+    // or playback preferences like textSize / playbackSpeed.
+    watch(
+        [
+            () => settings.value.simplificationLevel,
+            () => settings.value.summaryLength,
+            () => settings.value.emoji,
+        ],
+        () => {
+            if (historyItems.value.length === 0) return;
+            historyItems.value[0].date = dayjs();
+        },
+    );
 
     setInterval(() => {
         historyItems.value.map(item => {

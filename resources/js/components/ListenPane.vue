@@ -52,7 +52,16 @@
                     </div>
 
                     <!-- Time -->
-                    <span class="shrink-0 text-xs text-white/70">{{ formatTime(currentTime) }}</span>
+                    <span class="shrink-0 text-xs text-white/70">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
+
+                    <!-- Speed -->
+                    <button
+                        class="shrink-0 cursor-pointer rounded-full bg-white/20 px-2 py-1 text-xs font-bold text-white"
+                        @click="cycleSpeed"
+                        :aria-label="`Playback speed ${speed} times. Tap to change.`"
+                    >
+                        {{ speed }}×
+                    </button>
                 </div>
             </div>
 
@@ -67,7 +76,12 @@
 
                 <!-- Word-highlighted text (audio ready) -->
                 <div v-else-if="words.length > 0">
-                    <p v-for="(para, pIdx) in paragraphs" :key="pIdx" class="mb-4 flex flex-wrap leading-relaxed">
+                    <p
+                        v-for="(para, pIdx) in paragraphs"
+                        :key="pIdx"
+                        class="mb-4 flex flex-wrap rounded-md px-2 py-1 leading-relaxed transition-colors duration-200"
+                        :class="currentParagraphIndex === pIdx ? 'bg-purple-light/40' : ''"
+                    >
                         <span
                             v-for="word in para"
                             :key="word.index"
@@ -141,13 +155,37 @@ const {
     progress,
     currentWordIndex,
     words,
+    speed,
     generate,
     tryRestore,
     play,
     pause,
     seekTo,
+    setSpeed,
     formatTime,
 } = useListenPlayer();
+
+const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
+
+function cycleSpeed() {
+    const currentIdx = SPEED_OPTIONS.indexOf(speed.value);
+    const nextIdx = currentIdx === -1 ? 1 : (currentIdx + 1) % SPEED_OPTIONS.length;
+    setSpeed(SPEED_OPTIONS[nextIdx]);
+}
+
+const currentParagraphIndex = computed(() => {
+    if (currentWordIndex.value < 0) return -1;
+    for (let i = 0; i < paragraphs.value.length; i++) {
+        const para = paragraphs.value[i];
+        if (para.length === 0) continue;
+        const firstIdx = para[0].index;
+        const lastIdx = para[para.length - 1].index;
+        if (currentWordIndex.value >= firstIdx && currentWordIndex.value <= lastIdx) {
+            return i;
+        }
+    }
+    return -1;
+});
 
 const scrollContainer = ref<HTMLElement | null>(null);
 const wordRefs = reactive<Record<number, HTMLElement>>({});

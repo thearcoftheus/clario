@@ -5,118 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Prism\Prism\Enums\Provider;
-use Prism\Prism\Prism;
 
 class AvatarController extends Controller
 {
-    private const PRESENTER_ID = 'v2_public_Alyssa_NoHands_BlackShirt_Home@Mvn6Nalx90';
-    private const MAX_SUMMARY_LENGTH = 1000;
-
-    // Map simplification level to reading-level description (no audience-as-children framing).
-    private const READING_LEVELS = [
-        'Easy' => 'a Grade 2-3 reading level',
-        'Moderate' => 'a Grade 5-6 reading level',
-        'Challenging' => 'a Grade 9-10 reading level',
-    ];
-
-    private function getAuthHeader(): string
-    {
-        $apiKey = env('DID_API_KEY');
-        return 'Basic ' . base64_encode($apiKey);
-    }
-
-    private function getReadingLevelGrade(string $level): string
-    {
-        return self::READING_LEVELS[$level] ?? self::READING_LEVELS['Easy'];
-    }
-
-    private function condenseSummary(string $summary, int $maxLength, string $readingLevel): string
-    {
-        $grade = $this->getReadingLevelGrade($readingLevel);
-
-        $prompt = <<<PROMPT
-You are a helpful assistant that rewrites complex topics in plain language for adult readers whose comfortable reading level is around {$grade}.
-Your audience is adults — including adults with intellectual or developmental disabilities. Address the reader as an adult; do not use childlike phrasing such as "grown-ups," "boys and girls," "kiddos," or similar terms geared toward children. When referring to adult people, use "adults."
-
-Condense the following summary into a shorter version that is no longer than {$maxLength} characters.
-Use everyday words and short sentences while keeping the original meaning.
-Keep the most important information and maintain a natural, conversational tone suitable for being read aloud.
-Do not use any markdown formatting, bullet points, or special characters.
-Write in plain text only, as this will be spoken by a voice avatar.
-Output ONLY the condensed summary text, nothing else.
-
-Summary to condense:
-{$summary}
-PROMPT;
-
-        try {
-            $response = Prism::text()
-                ->using(Provider::Gemini, 'gemini-2.5-flash')
-                ->withMaxTokens(1500)
-                ->withProviderOptions(['thinkingBudget' => 0])
-                ->withPrompt($prompt)
-                ->asText();
-
-            return trim($response->text);
-        } catch (\Exception $e) {
-            Log::error('Failed to condense summary', ['error' => $e->getMessage()]);
-            // Fallback: just truncate cleanly at a sentence boundary if possible
-            $truncated = substr($summary, 0, $maxLength);
-            $lastPeriod = strrpos($truncated, '.');
-            if ($lastPeriod !== false && $lastPeriod > $maxLength * 0.5) {
-                return substr($truncated, 0, $lastPeriod + 1);
-            }
-            return $truncated;
-        }
-    }
-
-    private function extractTitleFromSummary(string $summary): ?string
-    {
-        // Look for the first markdown heading (# or ##)
-        if (preg_match('/^#{1,2}\s+(.+?)$/m', $summary, $matches)) {
-            $title = trim($matches[1]);
-            // Remove any trailing markdown formatting
-            $title = preg_replace('/\*\*(.+?)\*\*/', '$1', $title);
-            $title = preg_replace('/__(.+?)__/', '$1', $title);
-            return $title;
-        }
-        return null;
-    }
-
-    private function cleanPageTitle(string $title): string
-    {
-        // Common patterns to remove from page titles
-        // These typically appear at the end: " - Site Name", " | Site Name", " — Site Name"
-        $patterns = [
-            // Match " - Site Name" or " | Site Name" or " — Site Name" at the end
-            '/\s*[\-\|—–]\s*(?:The\s+)?(?:New York Times|NYT|Washington Post|CNN|BBC|NPR|Guardian|Forbes|Reuters|AP News|USA Today|Wall Street Journal|WSJ|Bloomberg|CNBC|Fox News|NBC News|CBS News|ABC News|Politico|The Atlantic|Vox|Vice|Wired|TechCrunch|The Verge|Ars Technica|Mashable|Engadget|Gizmodo|Slate|Salon|HuffPost|BuzzFeed|Medium|Substack|Wikipedia).*$/i',
-            // Generic pattern: remove " - Anything" or " | Anything" at end if it looks like a site name (starts with capital)
-            '/\s*[\-\|—–]\s+[A-Z][A-Za-z\s]{2,30}$/',
-        ];
-
-        foreach ($patterns as $pattern) {
-            $cleaned = preg_replace($pattern, '', $title);
-            if ($cleaned && $cleaned !== $title) {
-                return trim($cleaned);
-            }
-        }
-
-        return trim($title);
-    }
-
-    private function determineTitle(string $pageTitle, string $summary): string
-    {
-        // First, try to extract title from the summary's first heading
-        $extractedTitle = $this->extractTitleFromSummary($summary);
-        if ($extractedTitle) {
-            return $extractedTitle;
-        }
-
-        // Otherwise, clean up the page title
-        return $this->cleanPageTitle($pageTitle);
-    }
-
     private function stripMarkdown(string $text): string
     {
         // Remove headings
@@ -149,130 +40,25 @@ PROMPT;
         ]);
 
         $rawSummary = $validated['summary'];
-        $readingLevel = $validated['simplificationLevel'] ?? 'Easy';
 
-        // Determine the best title (from summary heading or cleaned page title)
-        $title = $this->determineTitle($validated['title'], $rawSummary);
-
-        $summary = $this->stripMarkdown($rawSummary);
-
-        // Use the easy-read summary verbatim. The earlier MAX_SUMMARY_LENGTH/condense step was
-        // removed so audio + video match the easy-read summary exactly. Longer scripts mean more
+        // Use the easy-read summary verbatim (markdown stripped, since TTS can't
+        // speak syntax). No preamble, no condensing — audio and video are both
+        // expected to match the easy-read text exactly. Longer scripts mean more
         // Cartesia TTS time and more Simli streaming minutes — monitored, not capped.
-        $script = "This article is called {$title}. Here's what it's about. {$summary}";
+        $script = $this->stripMarkdown($rawSummary);
 
         return response()->json([
             'script' => $script,
         ]);
     }
 
-    public function generate(Request $request)
-    {
-        $validated = $request->validate([
-            'title' => 'required|string',
-            'summary' => 'required|string',
-            'simplificationLevel' => 'sometimes|string',
-        ]);
-
-        $rawSummary = $validated['summary'];
-        $readingLevel = $validated['simplificationLevel'] ?? 'Easy';
-
-        // Determine the best title (from summary heading or cleaned page title)
-        $title = $this->determineTitle($validated['title'], $rawSummary);
-
-        $summary = $this->stripMarkdown($rawSummary);
-
-        // If summary is too long, use AI to condense it
-        if (strlen($summary) > self::MAX_SUMMARY_LENGTH) {
-            $summary = $this->condenseSummary($summary, self::MAX_SUMMARY_LENGTH, $readingLevel);
-        }
-
-        // Build the script
-        $script = "This article is called {$title}. Here's what it's about. {$summary}";
-
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => $this->getAuthHeader(),
-                'Content-Type' => 'application/json',
-            ])->post('https://api.d-id.com/clips', [
-                'presenter_id' => self::PRESENTER_ID,
-                'script' => [
-                    'type' => 'text',
-                    'input' => $script,
-                    'provider' => [
-                        'type' => 'microsoft',
-                        'voice_id' => 'en-US-JennyNeural',
-                    ],
-                ],
-            ]);
-
-            if (!$response->successful()) {
-                Log::error('D-ID API error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-                return response()->json(['error' => 'Failed to generate avatar video'], 500);
-            }
-
-            $data = $response->json();
-
-            return response()->json([
-                'jobId' => $data['id'] ?? null,
-                'script' => $script,
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('D-ID API exception', [
-                'message' => $e->getMessage(),
-            ]);
-            return response()->json(['error' => 'Failed to generate avatar video'], 500);
-        }
-    }
-
-    public function status(string $jobId)
-    {
-        try {
-            $response = Http::withHeaders([
-                'Authorization' => $this->getAuthHeader(),
-                'Content-Type' => 'application/json',
-            ])->get("https://api.d-id.com/clips/{$jobId}");
-
-            if (!$response->successful()) {
-                Log::error('D-ID status API error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-                return response()->json(['error' => 'Failed to get status'], 500);
-            }
-
-            $data = $response->json();
-            $status = $data['status'] ?? 'unknown';
-
-            $result = ['status' => $status];
-
-            // When done, include the video URL
-            if ($status === 'done' && isset($data['result_url'])) {
-                $result['videoUrl'] = $data['result_url'];
-            }
-
-            // Pass through error information if present
-            if ($status === 'error' && isset($data['error'])) {
-                $result['error'] = $data['error'];
-            }
-
-            return response()->json($result);
-
-        } catch (\Exception $e) {
-            Log::error('D-ID status API exception', [
-                'message' => $e->getMessage(),
-            ]);
-            return response()->json(['error' => 'Failed to get status'], 500);
-        }
-    }
-
     /**
-     * Generate PCM16 audio using Cartesia TTS
-     * Returns raw PCM16 audio at 16kHz for streaming to Simli
+     * Generate PCM16 audio + word-level timestamps using Cartesia's SSE TTS endpoint.
+     *
+     * Streams the SSE response from Cartesia, accumulating `chunk` events (base64 audio)
+     * and `timestamps` events (word-level timing). Returns a single JSON payload with
+     * base64 audio + a timepoints array shaped like /narrate-sync's response, so the
+     * frontend can drive captions with the same pattern used by the Listen pane.
      */
     public function cartesiaTTS(Request $request)
     {
@@ -287,7 +73,7 @@ PROMPT;
         }
 
         try {
-            Log::info('Cartesia TTS request', [
+            Log::info('Cartesia SSE TTS request', [
                 'textLength' => strlen($validated['text']),
                 'wordCount' => str_word_count($validated['text']),
             ]);
@@ -296,7 +82,10 @@ PROMPT;
                 'Authorization' => 'Bearer ' . $cartesiaApiKey,
                 'Cartesia-Version' => '2024-11-13',
                 'Content-Type' => 'application/json',
-            ])->timeout(180)->post('https://api.cartesia.ai/tts/bytes', [
+                'Accept' => 'text/event-stream',
+            ])->withOptions([
+                'stream' => true,
+            ])->timeout(180)->post('https://api.cartesia.ai/tts/sse', [
                 'model_id' => 'sonic-3',
                 'transcript' => $validated['text'],
                 'voice' => [
@@ -312,33 +101,100 @@ PROMPT;
                     'encoding' => 'pcm_s16le',
                     'sample_rate' => 16000,
                 ],
+                'add_timestamps' => true,
             ]);
 
             if (!$response->successful()) {
-                Log::error('Cartesia TTS error', [
+                Log::error('Cartesia SSE TTS error', [
                     'status' => $response->status(),
                     'body' => $response->body(),
                 ]);
                 return response()->json([
                     'error' => 'Failed to generate audio',
-                    'details' => $response->body(),
                 ], 500);
             }
 
-            $audioBytes = $response->body();
+            // Parse SSE stream: events are separated by blank lines, each event has
+            // `event:` and `data:` lines. We collect chunk + timestamps events and
+            // stop on `done` (or `error`).
+            $audioBytes = '';
+            $timepoints = [];
 
-            Log::info('Cartesia TTS success', [
+            $body = $response->toPsrResponse()->getBody();
+            $buffer = '';
+            $streamErrored = false;
+
+            while (!$body->eof()) {
+                $buffer .= $body->read(8192);
+
+                while (($pos = strpos($buffer, "\n\n")) !== false) {
+                    $eventBlock = substr($buffer, 0, $pos);
+                    $buffer = substr($buffer, $pos + 2);
+
+                    $eventType = null;
+                    $eventData = '';
+                    foreach (explode("\n", $eventBlock) as $line) {
+                        if (str_starts_with($line, 'event:')) {
+                            $eventType = trim(substr($line, 6));
+                        } elseif (str_starts_with($line, 'data:')) {
+                            // SSE allows multiple data: lines per event; concatenate.
+                            $eventData .= ltrim(substr($line, 5));
+                        }
+                    }
+
+                    if ($eventType === null) {
+                        continue;
+                    }
+
+                    // Cartesia chunk events: data is either raw base64 or a JSON object
+                    // with a {data: base64} field. Handle both defensively.
+                    if ($eventType === 'chunk') {
+                        $decoded = json_decode($eventData, true);
+                        $b64 = is_array($decoded) ? ($decoded['data'] ?? null) : $eventData;
+                        if (is_string($b64)) {
+                            $audioBytes .= base64_decode($b64);
+                        }
+                    } elseif ($eventType === 'timestamps') {
+                        $decoded = json_decode($eventData, true);
+                        if (is_array($decoded) && isset($decoded['word_timestamps'])) {
+                            $wt = $decoded['word_timestamps'];
+                            $words = $wt['words'] ?? [];
+                            $starts = $wt['start'] ?? [];
+                            foreach ($words as $i => $word) {
+                                if (isset($starts[$i])) {
+                                    $timepoints[] = [
+                                        'markName' => $word,
+                                        'timeSeconds' => (float) $starts[$i],
+                                    ];
+                                }
+                            }
+                        }
+                    } elseif ($eventType === 'error') {
+                        Log::error('Cartesia SSE error event', ['data' => $eventData]);
+                        $streamErrored = true;
+                        break 2;
+                    } elseif ($eventType === 'done') {
+                        break 2;
+                    }
+                }
+            }
+
+            if ($streamErrored) {
+                return response()->json(['error' => 'TTS stream returned an error'], 500);
+            }
+
+            Log::info('Cartesia SSE TTS success', [
                 'audioSize' => strlen($audioBytes),
+                'timepointCount' => count($timepoints),
             ]);
 
-            // Return raw PCM16 audio
-            return response($audioBytes, 200, [
-                'Content-Type' => 'audio/pcm',
-                'Content-Length' => strlen($audioBytes),
+            return response()->json([
+                'audio' => base64_encode($audioBytes),
+                'timepoints' => $timepoints,
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Cartesia TTS exception', [
+            Log::error('Cartesia SSE TTS exception', [
                 'message' => $e->getMessage(),
             ]);
             return response()->json(['error' => 'Failed to generate audio: ' . $e->getMessage()], 500);
