@@ -68,7 +68,7 @@
                 <section class="px-4 pt-4 pb-4">
                     <h2 class="text-purple mb-2 text-lg leading-tight font-bold tracking-tight">Choose How To Learn About It</h2>
                     <div class="flex flex-col gap-2">
-                        <!-- Simple Read (full-width, purple) -->
+                        <!-- Read (full-width, purple) -->
                         <button
                             class="border-card-border bg-purple flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
                             @click="activeView = 'summary'"
@@ -77,7 +77,7 @@
                                 <img :src="bookIcon" alt="" class="size-[36px]" />
                             </div>
                             <div class="flex-1">
-                                <p class="text-base leading-tight font-bold tracking-tight text-white">Simple Read</p>
+                                <p class="text-base leading-tight font-bold tracking-tight text-white">Read</p>
                                 <p class="mt-0.5 text-sm text-white">Simpler words, bigger text, pictures</p>
                             </div>
                             <div class="flex shrink-0 flex-col items-end gap-1">
@@ -221,6 +221,7 @@ provide(NavigationKey, {
             activeView.value = view;
         }
     },
+    openSettings: () => settingsDialog.value?.open(),
 });
 
 const appStateStore = useAppStateStore();

@@ -4,6 +4,7 @@ export type View = 'home' | 'summary' | 'chat' | 'narrate' | 'avatar';
 
 export interface NavigationContext {
     setActiveView: (view: View) => void;
+    openSettings: () => void;
 }
 
 export const NavigationKey: InjectionKey<NavigationContext> = Symbol('navigation');

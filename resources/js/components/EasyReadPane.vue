@@ -12,12 +12,22 @@
             />
         </div>
 
-        <!-- Simple Read heading row -->
+        <!-- Read heading row -->
         <div class="flex items-center justify-between px-4 pb-3">
-            <div class="flex items-center gap-1.5">
-                <img :src="bookIcon" alt="" class="size-5" />
-                <span class="text-lg font-bold leading-tight tracking-tight text-purple">Simple Read</span>
+            <div class="flex items-baseline gap-1.5">
+                <img :src="bookIcon" alt="" class="size-5 self-center" />
+                <span class="text-lg font-bold leading-tight tracking-tight text-purple">Read</span>
+                <span class="text-sm leading-tight text-purple">[{{ readingLevelLabel }}]</span>
             </div>
+            <button
+                type="button"
+                class="flex cursor-pointer items-center gap-1.5"
+                @click="nav.openSettings()"
+                aria-label="Open reading settings"
+            >
+                <span class="text-sm text-purple">Reading Settings</span>
+                <img :src="settingsIcon" alt="" class="size-4" />
+            </button>
         </div>
 
         <!-- Content card with pagination -->
@@ -107,7 +117,7 @@ import LearnAnotherWay from '@/components/LearnAnotherWay.vue';
 import Markdown from '@/components/Markdown.vue';
 import { useContentPagination } from '@/composables/useContentPagination';
 import { useNavigation } from '@/composables/useNavigation';
-import { useAppStateStore } from '@/stores/appStateStore';
+import { SimplificationLevelDisplayLabels, useAppStateStore } from '@/stores/appStateStore';
 import { useFeedbackStore } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next';
@@ -115,6 +125,7 @@ import { storeToRefs } from 'pinia';
 import { computed, ref } from 'vue';
 
 import bookIcon from '@/../icons/sidebar/book.svg';
+import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const nav = useNavigation();
 
@@ -125,6 +136,8 @@ const appState = useAppStateStore();
 const { isExtractingContent, settings } = storeToRefs(appState);
 
 const textSizeClass = computed(() => `size-${settings.value.textSize.toLowerCase()}`);
+
+const readingLevelLabel = computed(() => SimplificationLevelDisplayLabels[settings.value.simplificationLevel]);
 
 const currentItem = computed(() => historyItems.value[0] ?? null);
 

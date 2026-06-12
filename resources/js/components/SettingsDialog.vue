@@ -1,151 +1,177 @@
 <template>
     <Dialog v-model:open="isOpen">
-        <DialogContent class="max-h-[85vh] flex flex-col bg-sidebar-bg border-card-border !rounded-xl !p-0 !gap-0">
-            <!-- Header -->
-            <div class="flex items-center justify-between border-b border-card-border bg-white px-5 py-4 rounded-t-xl">
+        <DialogContent class="max-h-[85vh] flex flex-col bg-white border-card-border !rounded-xl !p-0 !gap-0">
+            <!-- Header: title (left) + Save and Close button (right) -->
+            <div class="flex items-center justify-between px-5 pt-4 pb-2">
                 <div class="flex items-center gap-2">
                     <img :src="settingsIcon" alt="" class="size-5" />
-                    <span class="text-lg font-bold text-purple">Settings</span>
+                    <span class="text-lg font-bold text-purple">Reading Settings</span>
                 </div>
+                <button
+                    type="button"
+                    class="cursor-pointer rounded-lg bg-purple px-4 py-2 text-sm font-bold text-white"
+                    @click="onSave"
+                >
+                    Save and Close
+                </button>
             </div>
 
-            <form @submit.prevent="onSubmit" class="flex flex-col overflow-hidden">
-                <div class="space-y-6 overflow-y-auto flex-1 px-5 py-5">
-                    <!-- Reading Level -->
-                    <div class="rounded-xl border border-card-border bg-white p-4">
-                        <label class="mb-3 block text-sm font-bold text-purple">Reading Level</label>
-                        <Slider v-model="simplificationLevel" :min="0" :max="SimplificationLevels.length - 1" :step="1" />
-                        <div class="mt-2 flex justify-between text-xs text-gray-500">
+            <!-- Body -->
+            <div class="space-y-6 overflow-y-auto px-5 py-5">
+                <!-- Your Preferred Reading Style -->
+                <section>
+                    <div class="mb-3 flex items-center gap-3">
+                        <h3 class="shrink-0 text-base font-bold text-black">Your Preferred Reading Style</h3>
+                        <div class="flex-1 border-t border-purple" />
+                    </div>
+                    <div class="flex flex-col gap-3">
+                        <button
+                            v-for="level in simplificationLevelOrder"
+                            :key="level.value"
+                            type="button"
+                            class="flex w-full cursor-pointer items-center gap-3 text-left"
+                            @click="formValues.simplificationLevel = level.value"
+                        >
                             <div
-                                v-for="(level, i) in SimplificationLevels"
-                                :key="level"
-                                class="flex-1"
-                                :class="i == 0 ? 'text-left' : i == SimplificationLevels.length - 1 ? 'text-right' : 'text-center'"
+                                class="flex w-32 shrink-0 items-center justify-center rounded-md px-3 py-3 text-sm font-bold text-black transition-colors"
+                                :class="formValues.simplificationLevel === level.value
+                                    ? 'border-[3px] border-purple bg-purple-light'
+                                    : 'border border-purple bg-sidebar-bg'"
                             >
-                                {{ level }}
+                                {{ SimplificationLevelDisplayLabels[level.value] }}
                             </div>
-                        </div>
+                            <p class="flex-1 text-sm leading-snug text-black">{{ level.description }}</p>
+                        </button>
                     </div>
+                </section>
 
-                    <!-- Summary Length -->
-                    <div class="rounded-xl border border-card-border bg-white p-4">
-                        <label class="mb-3 block text-sm font-bold text-purple">Summary Length</label>
-                        <Slider v-model="summaryLength" :min="0" :max="SummaryLengths.length - 1" :step="1" />
-                        <div class="mt-2 flex justify-between text-xs text-gray-500">
-                            <div
-                                v-for="(length, i) in SummaryLengths"
-                                :key="length"
-                                class="flex-1"
-                                :class="i == 0 ? 'text-left' : i == SummaryLengths.length - 1 ? 'text-right' : 'text-center'"
-                            >
-                                {{ length }}
-                            </div>
-                        </div>
+                <!-- Article Length -->
+                <section>
+                    <div class="mb-3 flex items-center gap-3">
+                        <h3 class="shrink-0 text-base font-bold text-black">Article Length</h3>
+                        <div class="flex-1 border-t border-purple" />
                     </div>
-
-                    <!-- Text Size -->
-                    <div class="rounded-xl border border-card-border bg-white p-4">
-                        <label class="mb-3 block text-sm font-bold text-purple">Text Size</label>
-                        <Slider v-model="textSize" :min="0" :max="TextSizes.length - 1" :step="1" />
-                        <div class="mt-2 flex justify-between text-xs text-gray-500">
-                            <div
-                                v-for="(size, i) in TextSizes"
-                                :key="size"
-                                class="flex-1"
-                                :class="i == 0 ? 'text-left' : i == TextSizes.length - 1 ? 'text-right' : 'text-center'"
-                            >
-                                {{ size }}
-                            </div>
-                        </div>
+                    <div class="flex gap-2">
+                        <button
+                            v-for="length in summaryLengthOrder"
+                            :key="length.value"
+                            type="button"
+                            class="flex-1 cursor-pointer rounded-md px-3 py-3 text-sm font-bold text-black transition-colors"
+                            :class="formValues.summaryLength === length.value
+                                ? 'border-[3px] border-purple bg-purple-light'
+                                : 'border border-purple bg-sidebar-bg'"
+                            @click="formValues.summaryLength = length.value"
+                        >
+                            {{ length.label }}
+                        </button>
                     </div>
+                </section>
 
-                    <!-- Emoji Toggle -->
-                    <div class="flex items-center gap-3 rounded-xl border border-card-border bg-white p-4">
-                        <Checkbox id="emoji" v-model="formValues.emoji" />
-                        <label for="emoji" class="text-sm font-bold text-purple">Use emoji in summaries</label>
+                <!-- Text Size -->
+                <section>
+                    <div class="mb-3 flex items-center gap-3">
+                        <h3 class="shrink-0 text-base font-bold text-black">Text Size</h3>
+                        <div class="flex-1 border-t border-purple" />
                     </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="border-t border-card-border bg-white px-5 py-4 rounded-b-xl">
-                    <button
-                        type="submit"
-                        class="w-full cursor-pointer rounded-xl bg-purple py-2.5 text-sm font-bold text-white"
-                    >
-                        Save Changes
-                    </button>
-                </div>
-            </form>
+                    <div class="flex gap-2">
+                        <button
+                            v-for="size in textSizeOrder"
+                            :key="size.value"
+                            type="button"
+                            class="flex flex-1 cursor-pointer items-center justify-center rounded-md py-3 font-bold text-black transition-colors"
+                            :class="[
+                                formValues.textSize === size.value
+                                    ? 'border-[3px] border-purple bg-purple-light'
+                                    : 'border border-purple bg-sidebar-bg',
+                                size.aaClass,
+                            ]"
+                            @click="formValues.textSize = size.value"
+                        >
+                            Aa
+                        </button>
+                    </div>
+                </section>
+            </div>
         </DialogContent>
     </Dialog>
 </template>
 
 <script lang="ts" setup>
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Slider } from '@/components/ui/slider';
-import { SimplificationLevels, SummaryLengths, TextSizes, useAppStateStore } from '@/stores/appStateStore';
+import {
+    SimplificationLevelDisplayLabels,
+    useAppStateStore,
+    type SettingsState,
+    type SimplificationLevel,
+    type SummaryLength,
+    type TextSize,
+} from '@/stores/appStateStore';
 import { CircleCheck } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { h, ref, watch } from 'vue';
+import { h, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import settingsIcon from '@/../icons/sidebar/settings.svg';
 
 const isOpen = ref(false);
 
-defineExpose({ open: () => { isOpen.value = true; } });
-
 const appState = useAppStateStore();
 const { settings } = storeToRefs(appState);
 
-const formValues = ref(settings.value);
+// Working copy used by the form. Refreshed from the canonical settings each
+// time the dialog opens so any external updates (e.g. from onboarding) are
+// reflected. Direct user edits to the toggle buttons mutate this copy only;
+// nothing persists until Save and Close.
+const formValues = ref<SettingsState>({ ...settings.value });
 
-const simplificationLevel = ref([0]);
-
-watch(
-    () => settings.value.simplificationLevel,
-    () => {
-        simplificationLevel.value = [SimplificationLevels.indexOf(settings.value.simplificationLevel)];
+defineExpose({
+    open: () => {
+        formValues.value = { ...settings.value };
+        isOpen.value = true;
     },
-    { immediate: true },
-);
-
-watch(simplificationLevel, () => {
-    formValues.value.simplificationLevel = SimplificationLevels[simplificationLevel.value[0]];
 });
 
-const summaryLength = ref([0]);
-
-watch(
-    () => settings.value.summaryLength,
-    () => {
-        summaryLength.value = [SummaryLengths.indexOf(settings.value.summaryLength)];
+// Reading-level options. The label-mapping (Easy → 'Easy Read', etc.) lives
+// in appStateStore so it's shared with the Read pane heading; descriptions
+// stay local since they're only shown here. Order is the display order
+// (top to bottom).
+const simplificationLevelOrder: { value: SimplificationLevel; description: string }[] = [
+    {
+        value: 'Easy',
+        description: 'A simplified format, using one idea per sentence and short familiar words.',
     },
-    { immediate: true },
-);
-
-watch(summaryLength, () => {
-    formValues.value.summaryLength = SummaryLengths[summaryLength.value[0]];
-});
-
-const textSize = ref([0]);
-
-watch(
-    () => settings.value.textSize,
-    () => {
-        textSize.value = [TextSizes.indexOf(settings.value.textSize)];
+    {
+        value: 'Moderate',
+        description: 'Clear, well-structured writing that puts key information first and avoids jargon.',
     },
-    { immediate: true },
-);
+    {
+        value: 'Challenging',
+        description: 'Ordinary text written at a typical adult reading level.',
+    },
+];
 
-watch(textSize, () => {
-    formValues.value.textSize = TextSizes[textSize.value[0]];
-});
+const summaryLengthOrder: { value: SummaryLength; label: string }[] = [
+    { value: 'Short', label: 'Short' },
+    { value: 'Medium', label: 'Standard' },
+    { value: 'Long', label: 'Detailed' },
+];
 
-function onSubmit() {
+// Text size uses an "Aa" glyph at increasing sizes per the Figma; the visual
+// size of the glyph itself doubles as the preview of what the setting does.
+const textSizeOrder: { value: TextSize; aaClass: string }[] = [
+    { value: 'Small', aaClass: 'text-base' },
+    { value: 'Medium', aaClass: 'text-2xl' },
+    { value: 'Large', aaClass: 'text-3xl' },
+];
+
+function onSave() {
     appState.updateSettings(formValues.value);
     isOpen.value = false;
-    toast(h('div', { class: 'flex items-center gap-2 text-purple font-bold' }, [h(CircleCheck, { class: 'size-4' }), 'Settings saved']));
+    toast(
+        h('div', { class: 'flex items-center gap-2 text-purple font-bold' }, [
+            h(CircleCheck, { class: 'size-4' }),
+            'Settings saved',
+        ]),
+    );
 }
 </script>

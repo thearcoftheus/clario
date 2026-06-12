@@ -4,6 +4,16 @@ import { computed, ref } from 'vue';
 export const SimplificationLevels = ['Easy', 'Moderate', 'Challenging'] as const;
 export type SimplificationLevel = (typeof SimplificationLevels)[number];
 
+// User-facing labels for each simplification level. The enum values stay
+// `Easy / Moderate / Challenging` in storage and on the backend; only the UI
+// surfaces these friendlier names. Centralised here so the SettingsDialog
+// and the Read pane heading stay in sync.
+export const SimplificationLevelDisplayLabels: Record<SimplificationLevel, string> = {
+    Easy: 'Easy Read',
+    Moderate: 'Plain Language',
+    Challenging: 'Standard',
+};
+
 function isSimplficiationLevel(value: unknown): value is SimplificationLevel {
     return SimplificationLevels.includes(value as SimplificationLevel);
 }
