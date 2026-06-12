@@ -157,7 +157,6 @@ import route from '@/helpers/route';
 import { useAvatarStore, type Timepoint } from '@/stores/avatarStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { SimliClient, generateSimliSessionToken, generateIceServers } from 'simli-client';
-import axios from 'axios';
 import { Loader2, Pause, Play } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -184,6 +183,15 @@ const isPaused = ref(false);
 let simliClient: SimliClient | null = null;
 let cachedAudio: Uint8Array | null = null;
 let disposed = false;
+
+// Streaming state for the Cartesia → Simli pipeline.
+// pendingChunks is a FIFO of audio chunks waiting to be sent to Simli; the pump
+// drains it at controlled pacing. cartesiaState tracks the upstream stream so
+// the pump knows when to stop waiting for more chunks. abortController lets
+// stopGeneration() / unmount cancel an in-flight fetch.
+const pendingChunks: Uint8Array[] = [];
+let cartesiaState: 'idle' | 'streaming' | 'done' | 'error' = 'idle';
+let abortController: AbortController | null = null;
 
 // Caption state — driven by Cartesia word-level timepoints, synced via audioRef.
 const captionTimepoints = ref<Timepoint[]>([]);
@@ -222,113 +230,267 @@ function togglePause() {
     }
 }
 
+function base64ToUint8Array(b64: string): Uint8Array {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
+function tryParseJson(s: string): any {
+    try {
+        return JSON.parse(s);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Open the Cartesia SSE stream and consume it event-by-event. Audio chunks go
+ * straight into `pendingChunks` for the pump to forward to Simli; timestamp
+ * events extend `captionTimepoints` so captions update as soon as Cartesia
+ * names a word. Returns the full audio buffer once the stream completes,
+ * which the caller persists to the avatarStore cache for replay.
+ */
+async function fetchCartesiaSSE(text: string, signal: AbortSignal): Promise<Uint8Array> {
+    const response = await fetch(route('avatar.cartesia.tts'), {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'text/event-stream',
+        },
+        body: JSON.stringify({ text }),
+        signal,
+    });
+
+    if (!response.ok || !response.body) {
+        throw new Error(`Server returned ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const allChunks: Uint8Array[] = [];
+
+    try {
+        readLoop: while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            let pos: number;
+            while ((pos = buffer.indexOf('\n\n')) !== -1) {
+                const eventBlock = buffer.slice(0, pos);
+                buffer = buffer.slice(pos + 2);
+
+                let eventType: string | null = null;
+                let eventData = '';
+                for (const line of eventBlock.split('\n')) {
+                    if (line.startsWith('event:')) {
+                        eventType = line.slice(6).trim();
+                    } else if (line.startsWith('data:')) {
+                        const rest = line.slice(5);
+                        eventData += rest.startsWith(' ') ? rest.slice(1) : rest;
+                    }
+                }
+
+                if (eventType === null) continue;
+
+                if (eventType === 'chunk') {
+                    // Cartesia chunk events: data is either raw base64 or a JSON
+                    // object with {data: base64}. Handle both defensively.
+                    const parsed = tryParseJson(eventData);
+                    const b64 =
+                        parsed && typeof parsed === 'object' && typeof parsed.data === 'string'
+                            ? parsed.data
+                            : eventData;
+                    if (typeof b64 === 'string' && b64.length > 0) {
+                        const bytes = base64ToUint8Array(b64);
+                        allChunks.push(bytes);
+                        pendingChunks.push(bytes);
+                    }
+                } else if (eventType === 'timestamps') {
+                    const parsed = tryParseJson(eventData);
+                    const wt = parsed?.word_timestamps;
+                    if (wt && Array.isArray(wt.words) && Array.isArray(wt.start)) {
+                        const newTimepoints: Timepoint[] = wt.words.map(
+                            (word: string, i: number) => ({
+                                markName: word,
+                                timeSeconds: Number(wt.start[i]),
+                            }),
+                        );
+                        captionTimepoints.value = [...captionTimepoints.value, ...newTimepoints];
+                    }
+                } else if (eventType === 'done') {
+                    break readLoop;
+                } else if (eventType === 'error') {
+                    const parsed = tryParseJson(eventData);
+                    const msg = parsed?.error ?? 'TTS stream error';
+                    throw new Error(String(msg));
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+
+    // Combine all received chunks into one contiguous buffer for the avatarStore
+    // cache (used for "Watch Again" without re-fetching).
+    const totalLength = allChunks.reduce((sum, c) => sum + c.length, 0);
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const c of allChunks) {
+        combined.set(c, offset);
+        offset += c.length;
+    }
+    return combined;
+}
+
+/**
+ * Open the Simli WebRTC connection (token + ICE + start). Runs independently
+ * of the Cartesia fetch so the two waits overlap.
+ */
+async function setupSimli(): Promise<SimliClient> {
+    const tokenResponse = await generateSimliSessionToken({
+        config: {
+            faceId: SIMLI_FACE_ID,
+            handleSilence: true,
+            maxSessionLength: 3600,
+            maxIdleTime: 30,
+        },
+        apiKey: SIMLI_API_KEY,
+    });
+    const iceServers = await generateIceServers(SIMLI_API_KEY);
+
+    const client = new SimliClient(
+        tokenResponse.session_token,
+        videoRef.value!,
+        audioRef.value!,
+        iceServers,
+    );
+
+    client.on('disconnected', () => {
+        if (simliStatus.value === 'streaming') {
+            simliStatus.value = 'finished';
+        }
+    });
+
+    client.on('failed', () => {
+        simliStatus.value = 'error';
+        simliError.value = 'WebRTC connection failed';
+    });
+
+    await client.start();
+    return client;
+}
+
+/**
+ * Drain `pendingChunks` into Simli at controlled pacing. Pause-aware. Exits
+ * when the queue is empty AND cartesiaState is terminal, or when the client
+ * is replaced/disposed (e.g. user clicked Stop).
+ */
+async function pumpAudio(client: SimliClient): Promise<void> {
+    while (!disposed && simliClient === client) {
+        while (isPaused.value) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (disposed || simliClient !== client) return;
+        }
+
+        const chunk = pendingChunks.shift();
+        if (chunk) {
+            client.sendAudioData(chunk);
+            // 50ms pacing — matches the legacy throttle. Cartesia chunks are
+            // typically larger than Simli's per-call payload anyway, so this
+            // keeps us from flooding the WebRTC connection.
+            await new Promise(resolve => setTimeout(resolve, 50));
+        } else if (cartesiaState === 'done' || cartesiaState === 'error') {
+            return;
+        } else {
+            // Waiting for more chunks to arrive from Cartesia.
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+    }
+}
+
 async function startGeneration() {
     if (!scriptText.value || !videoRef.value || !audioRef.value) return;
 
     try {
         simliError.value = '';
         isPaused.value = false;
+        currentWordIndex.value = -1;
+        pendingChunks.length = 0;
+        simliStatus.value = 'preparing';
 
-        let pcm16Audio: Uint8Array;
+        let fullAudioPromise: Promise<Uint8Array>;
 
         if (cachedAudio) {
-            // Reuse cached audio — skip the slow TTS step
-            pcm16Audio = cachedAudio;
+            // Cache hit (in-memory from a prior visit this session): feed the
+            // pump from the cached buffer, no network call needed. Timepoints
+            // came from the avatarStore already at mount.
+            const audio = cachedAudio;
+            const CHUNK_SIZE = 6000;
+            for (let offset = 0; offset < audio.length; offset += CHUNK_SIZE) {
+                pendingChunks.push(audio.subarray(offset, Math.min(offset + CHUNK_SIZE, audio.length)));
+            }
+            cartesiaState = 'done';
+            fullAudioPromise = Promise.resolve(audio);
         } else {
-            // Fetch Cartesia audio + word-level timepoints (slow step). Backend
-            // returns { audio: base64Pcm16, timepoints: [{markName, timeSeconds}] }.
-            simliStatus.value = 'preparing';
-            const response = await axios.post(
-                route('avatar.cartesia.tts'),
-                { text: scriptText.value },
-            );
-
-            const audioBase64: string = response.data.audio;
-            const timepoints: Timepoint[] = response.data.timepoints ?? [];
-
-            const binary = atob(audioBase64);
-            pcm16Audio = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-                pcm16Audio[i] = binary.charCodeAt(i);
-            }
-
-            // Cache to the global store regardless of local component lifecycle —
-            // if the user navigated away mid-fetch, the next visit can still reuse it.
-            const articleUrl = currentItem.value?.url;
-            if (articleUrl) {
-                avatarStore.cacheCartesiaAudio({ audio: pcm16Audio, timepoints, url: articleUrl });
-            }
-
-            // Bail out if the user navigated away during the slow Cartesia fetch.
-            // Skips Simli session-token fetch, ICE-server fetch, and constructing a
-            // SimliClient against now-null video/audio refs.
-            if (disposed) return;
-
-            cachedAudio = pcm16Audio;
-            captionTimepoints.value = timepoints;
+            // Cache miss: stream from Cartesia. Audio chunks flow into
+            // pendingChunks as they arrive; the pump drains them in parallel.
+            captionTimepoints.value = [];
+            cartesiaState = 'streaming';
+            abortController = new AbortController();
+            fullAudioPromise = fetchCartesiaSSE(scriptText.value, abortController.signal)
+                .then(audio => {
+                    cartesiaState = 'done';
+                    return audio;
+                })
+                .catch(err => {
+                    cartesiaState = 'error';
+                    throw err;
+                });
         }
 
-        // Establish WebRTC connection
-        simliStatus.value = 'connecting';
-
-        const tokenResponse = await generateSimliSessionToken({
-            config: {
-                faceId: SIMLI_FACE_ID,
-                handleSilence: true,
-                maxSessionLength: 3600,
-                maxIdleTime: 30,
-            },
-            apiKey: SIMLI_API_KEY,
-        });
-
-        const iceServers = await generateIceServers(SIMLI_API_KEY);
-
-        simliClient = new SimliClient(
-            tokenResponse.session_token,
-            videoRef.value,
-            audioRef.value,
-            iceServers,
-        );
-
-        simliClient.on('disconnected', () => {
-            if (simliStatus.value === 'streaming') {
-                simliStatus.value = 'finished';
-            }
-        });
-
-        simliClient.on('failed', () => {
-            simliStatus.value = 'error';
-            simliError.value = 'WebRTC connection failed';
-        });
-
-        await simliClient.start();
+        // Parallel: kick off the Simli WebRTC handshake while Cartesia is
+        // (potentially) still streaming chunks in. On a cache hit this still
+        // gates time-to-first-frame on Simli's setup time only.
+        const client = await setupSimli();
+        if (disposed) {
+            client.stop();
+            return;
+        }
+        simliClient = client;
         simliStatus.value = 'streaming';
 
-        // Send audio in chunks, pausing when user pauses
-        const CHUNK_SIZE = 6000;
-        let offset = 0;
-        while (offset < pcm16Audio.length && simliClient) {
-            // Wait while paused
-            while (isPaused.value && simliClient) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
-            if (!simliClient) break;
+        const pumpPromise = pumpAudio(client);
 
-            const chunk = pcm16Audio.slice(offset, offset + CHUNK_SIZE);
-            simliClient.sendAudioData(chunk);
-            offset += CHUNK_SIZE;
-            await new Promise(resolve => setTimeout(resolve, 50));
+        // Once Cartesia is fully drained we know the final audio buffer; cache
+        // it so "Watch Again" and next-session restore work without re-fetching.
+        const fullAudio = await fullAudioPromise;
+        const articleUrl = currentItem.value?.url;
+        if (articleUrl) {
+            avatarStore.cacheCartesiaAudio({
+                audio: fullAudio,
+                timepoints: captionTimepoints.value,
+                url: articleUrl,
+            });
         }
+        cachedAudio = fullAudio;
 
-        // Wait for avatar to finish (also respect pause)
-        const audioDurationMs = (pcm16Audio.length / 32000) * 1000;
+        // Wait for the pump to finish sending everything to Simli.
+        await pumpPromise;
+
+        // Then wait for the avatar to actually finish playing through (pump
+        // sends faster than real-time, so playback continues after we stop
+        // sending). Add 2s slack for the trailing audio + Simli buffer.
+        const audioDurationMs = (fullAudio.length / 32000) * 1000;
         const waitEnd = Date.now() + audioDurationMs + 2000;
         while (Date.now() < waitEnd && simliStatus.value === 'streaming') {
             await new Promise(resolve => setTimeout(resolve, 200));
         }
 
         if (simliStatus.value === 'streaming') {
-            // Finished naturally — show last frame with replay option
             if (simliClient) {
                 simliClient.stop();
                 simliClient = null;
@@ -337,16 +499,27 @@ async function startGeneration() {
         }
     } catch (error: any) {
         console.error('[Watch] Generation error:', error);
+        if (abortController) {
+            abortController.abort();
+        }
         simliStatus.value = 'error';
         simliError.value = error.message || 'Failed to generate video';
+    } finally {
+        abortController = null;
     }
 }
 
 function stopGeneration() {
+    if (abortController) {
+        abortController.abort();
+        abortController = null;
+    }
     if (simliClient) {
         simliClient.stop();
         simliClient = null;
     }
+    pendingChunks.length = 0;
+    cartesiaState = 'idle';
     simliStatus.value = cachedAudio ? 'stopped' : 'idle';
     isPaused.value = false;
 }
@@ -486,6 +659,10 @@ watch(isPaused, (paused) => {
 onBeforeUnmount(() => {
     disposed = true;
     stopCaptionLoop();
+    if (abortController) {
+        abortController.abort();
+        abortController = null;
+    }
     if (simliClient) {
         simliClient.stop();
         simliClient = null;

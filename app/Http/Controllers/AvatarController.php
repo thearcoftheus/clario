@@ -5,9 +5,28 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AvatarController extends Controller
 {
+    // Cartesia voice + speed used for Watch audio. Centralised so the cache key
+    // can include them and so any future voice change invalidates cached files.
+    private const CARTESIA_VOICE_ID = '876c39e1-9ecd-42cd-b0c1-8b3906f0be19';
+    private const CARTESIA_SPEED = 0.75;
+
+    /**
+     * Common headers for an SSE response. X-Accel-Buffering: no defeats nginx
+     * proxy buffering; Content-Encoding: identity defeats gzip middleware that
+     * would otherwise hold the response until it has enough bytes to compress.
+     */
+    private const SSE_HEADERS = [
+        'Content-Type' => 'text/event-stream',
+        'Cache-Control' => 'no-cache, no-transform',
+        'X-Accel-Buffering' => 'no',
+        'Content-Encoding' => 'identity',
+    ];
+
     private function stripMarkdown(string $text): string
     {
         // Remove headings
@@ -55,10 +74,11 @@ class AvatarController extends Controller
     /**
      * Generate PCM16 audio + word-level timestamps using Cartesia's SSE TTS endpoint.
      *
-     * Streams the SSE response from Cartesia, accumulating `chunk` events (base64 audio)
-     * and `timestamps` events (word-level timing). Returns a single JSON payload with
-     * base64 audio + a timepoints array shaped like /narrate-sync's response, so the
-     * frontend can drive captions with the same pattern used by the Listen pane.
+     * Returns a streaming SSE response in all cases so the frontend has a single
+     * consumption path. On a cache miss the response forwards Cartesia's stream
+     * verbatim (and tees audio + timepoints to the on-disk cache once `done` fires).
+     * On a cache hit we replay the cached audio + timepoints as a synthesized SSE
+     * stream that completes in milliseconds.
      */
     public function cartesiaTTS(Request $request)
     {
@@ -72,133 +92,306 @@ class AvatarController extends Controller
             return response()->json(['error' => 'Cartesia API key not configured'], 500);
         }
 
-        try {
-            Log::info('Cartesia SSE TTS request', [
-                'textLength' => strlen($validated['text']),
-                'wordCount' => str_word_count($validated['text']),
-            ]);
+        $text = $validated['text'];
+        $hash = $this->cacheKey($text);
 
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $cartesiaApiKey,
-                'Cartesia-Version' => '2024-11-13',
-                'Content-Type' => 'application/json',
-                'Accept' => 'text/event-stream',
-            ])->withOptions([
-                'stream' => true,
-            ])->timeout(180)->post('https://api.cartesia.ai/tts/sse', [
-                'model_id' => 'sonic-3',
-                'transcript' => $validated['text'],
-                'voice' => [
-                    'mode' => 'id',
-                    'id' => '876c39e1-9ecd-42cd-b0c1-8b3906f0be19',
-                ],
-                'language' => 'en',
-                'generation_config' => [
-                    'speed' => 0.75,
-                ],
-                'output_format' => [
-                    'container' => 'raw',
-                    'encoding' => 'pcm_s16le',
-                    'sample_rate' => 16000,
-                ],
-                'add_timestamps' => true,
+        $cached = $this->readCache($hash);
+        if ($cached !== null) {
+            Log::info('Cartesia cache hit', [
+                'hash' => $hash,
+                'audioSize' => strlen($cached['audio']),
+                'timepointCount' => count($cached['timepoints']),
             ]);
+            return $this->replayCachedAsSse($cached);
+        }
 
-            if (!$response->successful()) {
-                Log::error('Cartesia SSE TTS error', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-                return response()->json([
-                    'error' => 'Failed to generate audio',
-                ], 500);
+        return $this->streamFromCartesia($text, $cartesiaApiKey, $hash);
+    }
+
+    /**
+     * Stream from Cartesia AND tee audio + timepoints to the on-disk cache.
+     * The forward path is byte-verbatim; teeing parses a parallel copy of the
+     * stream to extract structured data for storage.
+     */
+    private function streamFromCartesia(string $text, string $apiKey, string $hash): StreamedResponse
+    {
+        return new StreamedResponse(function () use ($text, $apiKey, $hash) {
+            while (ob_get_level() > 0) {
+                ob_end_clean();
             }
+            ob_implicit_flush(true);
 
-            // Parse SSE stream: events are separated by blank lines, each event has
-            // `event:` and `data:` lines. We collect chunk + timestamps events and
-            // stop on `done` (or `error`).
-            $audioBytes = '';
-            $timepoints = [];
+            Log::info('Cartesia SSE streaming (cache miss)', [
+                'hash' => $hash,
+                'textLength' => strlen($text),
+                'wordCount' => str_word_count($text),
+            ]);
 
-            $body = $response->toPsrResponse()->getBody();
-            $buffer = '';
-            $streamErrored = false;
+            $accumAudio = '';
+            $accumTimepoints = [];
+            $cacheable = true;
 
-            while (!$body->eof()) {
-                $buffer .= $body->read(8192);
+            try {
+                $upstream = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Cartesia-Version' => '2024-11-13',
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'text/event-stream',
+                ])->withOptions([
+                    'stream' => true,
+                ])->timeout(180)->post('https://api.cartesia.ai/tts/sse', [
+                    'model_id' => 'sonic-3',
+                    'transcript' => $text,
+                    'voice' => [
+                        'mode' => 'id',
+                        'id' => self::CARTESIA_VOICE_ID,
+                    ],
+                    'language' => 'en',
+                    'generation_config' => [
+                        'speed' => self::CARTESIA_SPEED,
+                    ],
+                    'output_format' => [
+                        'container' => 'raw',
+                        'encoding' => 'pcm_s16le',
+                        'sample_rate' => 16000,
+                    ],
+                    'add_timestamps' => true,
+                ]);
 
-                while (($pos = strpos($buffer, "\n\n")) !== false) {
-                    $eventBlock = substr($buffer, 0, $pos);
-                    $buffer = substr($buffer, $pos + 2);
+                if (!$upstream->successful()) {
+                    Log::error('Cartesia SSE upstream error', [
+                        'status' => $upstream->status(),
+                        'body' => $upstream->body(),
+                    ]);
+                    $this->emitErrorEvent('Cartesia returned status ' . $upstream->status());
+                    return;
+                }
 
-                    $eventType = null;
-                    $eventData = '';
-                    foreach (explode("\n", $eventBlock) as $line) {
-                        if (str_starts_with($line, 'event:')) {
-                            $eventType = trim(substr($line, 6));
-                        } elseif (str_starts_with($line, 'data:')) {
-                            // SSE allows multiple data: lines per event; concatenate.
-                            $eventData .= ltrim(substr($line, 5));
-                        }
-                    }
+                $body = $upstream->toPsrResponse()->getBody();
+                $teeBuffer = '';
 
-                    if ($eventType === null) {
+                while (!$body->eof()) {
+                    $bytes = $body->read(8192);
+                    if ($bytes === '') {
                         continue;
                     }
 
-                    // Cartesia chunk events: data is either raw base64 or a JSON object
-                    // with a {data: base64} field. Handle both defensively.
-                    if ($eventType === 'chunk') {
-                        $decoded = json_decode($eventData, true);
-                        $b64 = is_array($decoded) ? ($decoded['data'] ?? null) : $eventData;
-                        if (is_string($b64)) {
-                            $audioBytes .= base64_decode($b64);
+                    // Forward verbatim to the frontend.
+                    echo $bytes;
+                    flush();
+
+                    // Parse a parallel copy for the cache. Forwarding always
+                    // sees the same bytes; the tee parser just extracts the
+                    // structured payloads.
+                    $teeBuffer .= $bytes;
+                    while (($pos = strpos($teeBuffer, "\n\n")) !== false) {
+                        $eventBlock = substr($teeBuffer, 0, $pos);
+                        $teeBuffer = substr($teeBuffer, $pos + 2);
+
+                        [$eventType, $eventData] = $this->parseSseEvent($eventBlock);
+                        if ($eventType === null) {
+                            continue;
                         }
-                    } elseif ($eventType === 'timestamps') {
-                        $decoded = json_decode($eventData, true);
-                        if (is_array($decoded) && isset($decoded['word_timestamps'])) {
-                            $wt = $decoded['word_timestamps'];
-                            $words = $wt['words'] ?? [];
-                            $starts = $wt['start'] ?? [];
-                            foreach ($words as $i => $word) {
-                                if (isset($starts[$i])) {
-                                    $timepoints[] = [
-                                        'markName' => $word,
-                                        'timeSeconds' => (float) $starts[$i],
-                                    ];
+
+                        if ($eventType === 'chunk') {
+                            $decoded = json_decode($eventData, true);
+                            $b64 = is_array($decoded) ? ($decoded['data'] ?? null) : $eventData;
+                            if (is_string($b64) && $b64 !== '') {
+                                $accumAudio .= base64_decode($b64);
+                            }
+                        } elseif ($eventType === 'timestamps') {
+                            $decoded = json_decode($eventData, true);
+                            if (is_array($decoded) && isset($decoded['word_timestamps'])) {
+                                $wt = $decoded['word_timestamps'];
+                                $words = $wt['words'] ?? [];
+                                $starts = $wt['start'] ?? [];
+                                foreach ($words as $i => $word) {
+                                    if (isset($starts[$i])) {
+                                        $accumTimepoints[] = [
+                                            'markName' => $word,
+                                            'timeSeconds' => (float) $starts[$i],
+                                        ];
+                                    }
                                 }
                             }
+                        } elseif ($eventType === 'error') {
+                            $cacheable = false;
                         }
-                    } elseif ($eventType === 'error') {
-                        Log::error('Cartesia SSE error event', ['data' => $eventData]);
-                        $streamErrored = true;
-                        break 2;
-                    } elseif ($eventType === 'done') {
-                        break 2;
                     }
                 }
+
+                if ($cacheable && strlen($accumAudio) > 0 && count($accumTimepoints) > 0) {
+                    $this->writeCache($hash, $accumAudio, $accumTimepoints);
+                    Log::info('Cartesia cache written', [
+                        'hash' => $hash,
+                        'audioSize' => strlen($accumAudio),
+                        'timepointCount' => count($accumTimepoints),
+                    ]);
+                } else {
+                    Log::info('Cartesia stream finished without writing cache', [
+                        'hash' => $hash,
+                        'cacheable' => $cacheable,
+                        'audioSize' => strlen($accumAudio),
+                        'timepointCount' => count($accumTimepoints),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Cartesia SSE streaming exception', [
+                    'message' => $e->getMessage(),
+                ]);
+                $this->emitErrorEvent($e->getMessage());
             }
+        }, 200, self::SSE_HEADERS);
+    }
 
-            if ($streamErrored) {
-                return response()->json(['error' => 'TTS stream returned an error'], 500);
+    /**
+     * Replay a cache hit as a synthesized SSE stream. The frontend can't tell
+     * the difference from a fresh Cartesia stream; it just receives all the
+     * events in rapid succession instead of paced over real-time generation.
+     */
+    private function replayCachedAsSse(array $cached): StreamedResponse
+    {
+        return new StreamedResponse(function () use ($cached) {
+            while (ob_get_level() > 0) {
+                ob_end_clean();
             }
+            ob_implicit_flush(true);
 
-            Log::info('Cartesia SSE TTS success', [
-                'audioSize' => strlen($audioBytes),
-                'timepointCount' => count($timepoints),
-            ]);
+            // Emit the audio as a single chunk event (frontend chunks it again
+            // when pumping into Simli, so granularity here doesn't matter).
+            echo "event: chunk\n";
+            echo 'data: ' . base64_encode($cached['audio']) . "\n\n";
+            flush();
 
-            return response()->json([
-                'audio' => base64_encode($audioBytes),
-                'timepoints' => $timepoints,
-            ]);
+            // Emit timepoints in Cartesia's native shape so the frontend SSE
+            // parser handles them identically to a live stream.
+            $words = array_map(fn($tp) => $tp['markName'] ?? '', $cached['timepoints']);
+            $starts = array_map(fn($tp) => $tp['timeSeconds'] ?? 0, $cached['timepoints']);
+            echo "event: timestamps\n";
+            echo 'data: ' . json_encode([
+                'type' => 'timestamps',
+                'word_timestamps' => [
+                    'words' => $words,
+                    'start' => $starts,
+                ],
+            ]) . "\n\n";
+            flush();
 
-        } catch (\Exception $e) {
-            Log::error('Cartesia SSE TTS exception', [
-                'message' => $e->getMessage(),
-            ]);
-            return response()->json(['error' => 'Failed to generate audio: ' . $e->getMessage()], 500);
+            echo "event: done\ndata: {}\n\n";
+            flush();
+        }, 200, self::SSE_HEADERS);
+    }
+
+    /**
+     * Parse a single SSE event block into [eventType, dataString]. Multiple
+     * `data:` lines in one event are concatenated per the SSE spec.
+     */
+    private function parseSseEvent(string $eventBlock): array
+    {
+        $eventType = null;
+        $eventData = '';
+        foreach (explode("\n", $eventBlock) as $line) {
+            if (str_starts_with($line, 'event:')) {
+                $eventType = trim(substr($line, 6));
+            } elseif (str_starts_with($line, 'data:')) {
+                $eventData .= ltrim(substr($line, 5));
+            }
         }
+        return [$eventType, $eventData];
+    }
+
+    /**
+     * Emit a synthesized SSE error event so the frontend can surface a clean
+     * failure state without the connection closing silently mid-stream.
+     */
+    private function emitErrorEvent(string $message): void
+    {
+        echo "event: error\n";
+        echo 'data: ' . json_encode(['error' => $message]) . "\n\n";
+        flush();
+    }
+
+    /**
+     * Cache key for Cartesia output: hashes the inputs that produce different
+     * audio (text + voice + speed). The version suffix lets us invalidate
+     * everything by bumping it if the encoding/format ever changes.
+     */
+    private function cacheKey(string $text): string
+    {
+        return md5($text . ':' . self::CARTESIA_VOICE_ID . ':' . self::CARTESIA_SPEED . ':v1');
+    }
+
+    /**
+     * Returns ['audio' => bytes, 'timepoints' => array] or null on cache miss.
+     */
+    private function readCache(string $hash): ?array
+    {
+        $audioPath = "avatar/{$hash}.pcm";
+        $timepointsPath = "avatar/{$hash}.json";
+
+        if (!Storage::exists($audioPath) || !Storage::exists($timepointsPath)) {
+            return null;
+        }
+
+        $timepoints = json_decode(Storage::get($timepointsPath), true);
+        if (!is_array($timepoints)) {
+            return null;
+        }
+
+        return [
+            'audio' => Storage::get($audioPath),
+            'timepoints' => $timepoints,
+        ];
+    }
+
+    /**
+     * Atomic-ish cache write: stage to temp files then rename. Storage::move()
+     * is rename(2) on the local disk driver, which is atomic on the same
+     * filesystem.
+     */
+    private function writeCache(string $hash, string $audioBytes, array $timepoints): void
+    {
+        $audioPath = "avatar/{$hash}.pcm";
+        $timepointsPath = "avatar/{$hash}.json";
+        $tempAudio = "avatar/.{$hash}.pcm.tmp";
+        $tempTimepoints = "avatar/.{$hash}.json.tmp";
+
+        Storage::put($tempAudio, $audioBytes);
+        Storage::put($tempTimepoints, json_encode($timepoints));
+
+        if (Storage::exists($audioPath)) {
+            Storage::delete($audioPath);
+        }
+        if (Storage::exists($timepointsPath)) {
+            Storage::delete($timepointsPath);
+        }
+
+        Storage::move($tempAudio, $audioPath);
+        Storage::move($tempTimepoints, $timepointsPath);
+    }
+
+    /**
+     * Delete cached avatar files older than $daysOld days. Not wired to a
+     * scheduler in code; intended to be invoked manually or from a future
+     * scheduled command. PCM16 files grow ~5x faster than the MP3s under
+     * `storage/narrations/`, so this directory needs more aggressive pruning
+     * than its Listen-pane counterpart.
+     */
+    public function cleanupCache(int $daysOld = 7): int
+    {
+        $files = Storage::files('avatar');
+        $deleted = 0;
+        $cutoff = now()->subDays($daysOld)->timestamp;
+
+        foreach ($files as $file) {
+            if (Storage::lastModified($file) < $cutoff) {
+                Storage::delete($file);
+                $deleted++;
+            }
+        }
+
+        Log::info('Avatar cache cleanup completed', ['deleted' => $deleted]);
+        return $deleted;
     }
 
     /**

@@ -126,6 +126,11 @@ The "Watch" feature originally supported two video providers selected by a `vide
 
 If reviving D-ID later: WatchPane.vue is Simli-only by design. Don't reintroduce `videoProvider` as a settings-level switch — pick the provider at the route or component level instead. The condense step was a D-ID cost cap; Simli pricing is structured differently (per-minute streaming, not per-clip-length), so don't blindly port it across.
 
+## Cache directories
+
+- `storage/narrations/` — MP3 + JSON timepoints for the Listen pane, written by `NarrationService::generateAudioWithTimepoints`. Cleaned up via `NarrationService::cleanupCache($daysOld)`.
+- `storage/avatar/` — PCM16 + JSON timepoints for the Watch pane, written by `AvatarController::cartesiaTTS` on cache miss. Cleaned up via `AvatarController::cleanupCache($daysOld)`. **Grows ~5× faster than `narrations/`** because PCM16 is uncompressed — a 5-minute article is ~10 MB here vs ~2 MB in `narrations/`. Plan to prune more aggressively in production.
+
 Backend AI/TTS keys:
 - `GEMINI_API_KEY` - For AI agents via Prism
 - `GOOGLE_APPLICATION_CREDENTIALS` - For Cloud Text-to-Speech
