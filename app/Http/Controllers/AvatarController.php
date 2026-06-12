@@ -86,7 +86,7 @@ class AvatarController extends Controller
             'text' => 'required|string',
         ]);
 
-        $cartesiaApiKey = env('CARTESIA_API_KEY');
+        $cartesiaApiKey = config('services.cartesia.api_key');
 
         if (!$cartesiaApiKey) {
             return response()->json(['error' => 'Cartesia API key not configured'], 500);
@@ -406,8 +406,8 @@ class AvatarController extends Controller
             'faceId' => 'required|string',
         ]);
 
-        $simliApiKey = env('SIMLI_API_KEY');
-        $cartesiaApiKey = env('CARTESIA_API_KEY');
+        $simliApiKey = config('services.simli.api_key');
+        $cartesiaApiKey = config('services.cartesia.api_key');
 
         if (!$simliApiKey) {
             return response()->json(['error' => 'Simli API key not configured'], 500);

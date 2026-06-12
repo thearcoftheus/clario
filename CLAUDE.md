@@ -131,6 +131,17 @@ If reviving D-ID later: WatchPane.vue is Simli-only by design. Don't reintroduce
 - `storage/narrations/` — MP3 + JSON timepoints for the Listen pane, written by `NarrationService::generateAudioWithTimepoints`. Cleaned up via `NarrationService::cleanupCache($daysOld)`.
 - `storage/avatar/` — PCM16 + JSON timepoints for the Watch pane, written by `AvatarController::cartesiaTTS` on cache miss. Cleaned up via `AvatarController::cleanupCache($daysOld)`. **Grows ~5× faster than `narrations/`** because PCM16 is uncompressed — a 5-minute article is ~10 MB here vs ~2 MB in `narrations/`. Plan to prune more aggressively in production.
 
+## Deployment
+
+- **Production server:** `https://phpstack-562680-6324204.cloudwaysapps.com` — hosted on Cloudways. The hostname is Cloudways' auto-generated default subdomain; update this entry if a custom domain is ever added.
+- **Build the extension for production:** `npm run build:production -- --url https://phpstack-562680-6324204.cloudwaysapps.com` (after `nvm use 20`). The URL is baked into `chrome_extension/build/sidebar.js` and `chrome_extension/build/background.js` at build time.
+- **Server requirements:**
+  - `storage/app/avatar/` must exist and be writable by the web user. Grows ~5× faster than `storage/app/narrations/`.
+  - Web server must not buffer SSE responses. The `/api/avatar/cartesia/tts` endpoint returns `text/event-stream` and sets `X-Accel-Buffering: no` (defeats nginx buffering) plus `Content-Encoding: identity` (defeats gzip middleware). Verify nothing in the stack overrides those headers — the streaming latency win for the Watch pane depends on bytes arriving incrementally.
+  - PHP `output_buffering` should be `Off` or low (`4096`); the controller calls `ob_end_clean()` inside the response closure so even non-zero values are usually safe.
+- **After deploying new backend code:** `php artisan optimize:clear && php artisan route:cache`, then reload PHP-FPM if applicable (Cloudways handles this via its dashboard).
+- **Note on `config:cache`:** safe to run — all third-party API keys (Cartesia, Simli, Google Cloud TTS, Clario, Gemini) are read via `config('services.*.api_key')`, never via `env()` directly in controllers/services. If you ever add a new `env()` call to a controller, either add a matching entry in `config/services.php` and use `config()` instead, or skip `config:cache` for that release — Laravel's `env()` returns null in non-config files once config is cached.
+
 Backend AI/TTS keys:
 - `GEMINI_API_KEY` - For AI agents via Prism
 - `GOOGLE_APPLICATION_CREDENTIALS` - For Cloud Text-to-Speech

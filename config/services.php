@@ -43,4 +43,12 @@ return [
         'api_key' => env('CLARIO_API_KEY'),
     ],
 
+    'cartesia' => [
+        'api_key' => env('CARTESIA_API_KEY'),
+    ],
+
+    'simli' => [
+        'api_key' => env('SIMLI_API_KEY'),
+    ],
+
 ];

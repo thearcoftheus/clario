@@ -153,6 +153,7 @@
 <script lang="ts" setup>
 import CompactArticleCard from '@/components/CompactArticleCard.vue';
 import LearnAnotherWay from '@/components/LearnAnotherWay.vue';
+import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
 import { useAvatarStore, type Timepoint } from '@/stores/avatarStore';
 import { useHistoryStore } from '@/stores/historyStore';
@@ -255,10 +256,7 @@ function tryParseJson(s: string): any {
 async function fetchCartesiaSSE(text: string, signal: AbortSignal): Promise<Uint8Array> {
     const response = await fetch(route('avatar.cartesia.tts'), {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Accept: 'text/event-stream',
-        },
+        headers: getApiHeaders({ Accept: 'text/event-stream' }),
         body: JSON.stringify({ text }),
         signal,
     });
