@@ -131,6 +131,16 @@ If reviving D-ID later: WatchPane.vue is Simli-only by design. Don't reintroduce
 - `storage/narrations/` — MP3 + JSON timepoints for the Listen pane, written by `NarrationService::generateAudioWithTimepoints`. Cleaned up via `NarrationService::cleanupCache($daysOld)`.
 - `storage/avatar/` — PCM16 + JSON timepoints for the Watch pane, written by `AvatarController::cartesiaTTS` on cache miss. Cleaned up via `AvatarController::cleanupCache($daysOld)`. **Grows ~5× faster than `narrations/`** because PCM16 is uncompressed — a 5-minute article is ~10 MB here vs ~2 MB in `narrations/`. Plan to prune more aggressively in production.
 
+## Behavioral telemetry (local-only)
+
+Clario records small, structured behavioral events to inform future "adaptive defaults" work (auto-adjusting `simplificationLevel`, recommending different panes, etc.). The Clario user community is privacy-sensitive — this data **stays on the user's device and is never transmitted to a server**. That's a deliberate architectural constraint, not a future-toggle.
+
+- **Storage:** `chrome.storage.local` under the `behaviorEvents` key. Shape: `{ events: BehaviorEvent[] }`. Per Chrome profile, per install — same isolation as the `settings` key.
+- **Schema:** `resources/js/stores/feedbackStore.ts` defines a `BehaviorEvent` discriminated union. Today there is only `DifficultyFeedbackEvent` (recorded by `DifficultyFeedback.vue` at the end of Simple Read). Future event types (article completion, pane usage, settings changes) can be unioned into `BehaviorEvent` without schema migration.
+- **No API endpoint:** there is no `/api/feedback` or equivalent route. Do not add one. The future auto-adjustment logic must run client-side over the local event log.
+- **Inspection / clearing during dev:** in the side panel's DevTools console — `chrome.storage.local.get('behaviorEvents', console.log)` and `chrome.storage.local.remove('behaviorEvents')`. A user-facing "Clear behavior history" button in Settings is a reasonable follow-up but not yet built.
+- **Why `chrome.storage.local` and not IndexedDB:** at ~200 bytes per event, even tens of thousands of events fit under the 5 MB cap. Migration to IndexedDB is straightforward later if scale demands it.
+
 ## Deployment
 
 - **Production server:** `https://phpstack-562680-6324204.cloudwaysapps.com` — hosted on Cloudways. The hostname is Cloudways' auto-generated default subdomain; update this entry if a custom domain is ever added.

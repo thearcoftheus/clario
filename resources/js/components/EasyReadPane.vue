@@ -37,6 +37,12 @@
                     >
                         <div :style="{ transform: `translateX(${translateX})`, transition: 'transform 0.3s ease' }">
                             <Markdown :content="currentItem?.simplifiedContent ?? ''" :class="textSizeClass" />
+                            <DifficultyFeedback
+                                v-if="showDifficultyFeedback"
+                                :article-url="currentItem!.url"
+                                :article-title="currentItem!.aiTitle || currentItem!.name"
+                                :simplification-level="settings.simplificationLevel"
+                            />
                         </div>
                     </div>
                 </div>
@@ -96,11 +102,13 @@
 
 <script lang="ts" setup>
 import CompactArticleCard from '@/components/CompactArticleCard.vue';
+import DifficultyFeedback from '@/components/DifficultyFeedback.vue';
 import LearnAnotherWay from '@/components/LearnAnotherWay.vue';
 import Markdown from '@/components/Markdown.vue';
 import { useContentPagination } from '@/composables/useContentPagination';
 import { useNavigation } from '@/composables/useNavigation';
 import { useAppStateStore } from '@/stores/appStateStore';
+import { useFeedbackStore } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
@@ -126,11 +134,28 @@ const isLoading = computed(() => {
 
 const contentContainer = ref<HTMLElement | null>(null);
 
-const simplifiedContentRef = computed(() => currentItem.value?.simplifiedContent ?? '');
+const feedbackStore = useFeedbackStore();
+const { isLoadingEvents } = storeToRefs(feedbackStore);
+
+const showDifficultyFeedback = computed(() =>
+    !isLoading.value &&
+    !currentItem.value?.isStreaming &&
+    !currentItem.value?.isFetching &&
+    !isLoadingEvents.value &&
+    !!currentItem.value?.url,
+);
+
+// The pagination composable watches this trigger to re-measure columns. We
+// include both the simplified content AND the widget's visibility so that
+// when the widget mounts/unmounts (as its own column via break-before), the
+// total page count refreshes accordingly.
+const paginationTrigger = computed(() =>
+    `${currentItem.value?.simplifiedContent ?? ''}::${showDifficultyFeedback.value ? 'feedback' : 'none'}`,
+);
 
 const { currentPage, totalPages, nextPage, prevPage, translateX } = useContentPagination(
     contentContainer,
-    simplifiedContentRef,
+    paginationTrigger,
 );
 
 const progressPercent = computed(() => {
