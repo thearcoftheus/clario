@@ -58,13 +58,25 @@ function getPageContent(tabId: number, retry: number = 3) {
     );
 }
 
-export default function initSidebarListeners() {
+export default async function initSidebarListeners() {
     const historyStore = useHistoryStore();
 
     initSidebarPort();
 
+    // Pin this sidebar instance to its host window. Every Chrome event listener
+    // below filters against this ID so we ignore page loads, tab switches, and
+    // tab updates that happen in other browser windows. Without this, the
+    // sidebar in Window A would react to navigation in Window B since Chrome's
+    // tab and runtime APIs broadcast globally by default.
+    const hostWindow = await chrome.windows.getCurrent();
+    const myWindowId = hostWindow.id;
+    if (myWindowId === undefined) {
+        console.warn('[Clario] chrome.windows.getCurrent() returned no id; sidebar event filtering is disabled.');
+    }
+
     chrome.runtime.onMessage.addListener((message: ChromeMessage, sender) => {
         if (message.action !== 'pageLoaded') return;
+        if (sender.tab?.windowId !== myWindowId) return;
         if (!sender.tab?.active) return;
         historyStore.add({
             name: message.title,
@@ -76,19 +88,21 @@ export default function initSidebarListeners() {
     });
 
     document.addEventListener('DOMContentLoaded', () => {
-        // Get current tab content
-        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        // Get current tab content within our window
+        chrome.tabs.query({ active: true, windowId: myWindowId }, tabs => {
             if (!tabs[0]?.id) return;
             getPageContent(tabs[0].id!);
         });
 
-        // When tab updated, get tab's content
-        chrome.tabs.onUpdated.addListener(tabId => {
+        // When a tab in our window updates, get its content
+        chrome.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
+            if (tab.windowId !== myWindowId) return;
             getPageContent(tabId);
         });
 
-        // When switch to new tab, get tab's content
+        // When the active tab in our window changes, get its content
         chrome.tabs.onActivated.addListener(activeInfo => {
+            if (activeInfo.windowId !== myWindowId) return;
             getPageContent(activeInfo.tabId);
         });
     });
