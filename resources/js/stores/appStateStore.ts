@@ -9,9 +9,9 @@ export type SimplificationLevel = (typeof SimplificationLevels)[number];
 // surfaces these friendlier names. Centralised here so the SettingsDialog
 // and the Read pane heading stay in sync.
 export const SimplificationLevelDisplayLabels: Record<SimplificationLevel, string> = {
-    Easy: 'Easy Read',
-    Moderate: 'Plain Language',
-    Challenging: 'Standard',
+    Easy: 'Easy',
+    Moderate: 'Simplified',
+    Challenging: 'Detailed',
 };
 
 function isSimplficiationLevel(value: unknown): value is SimplificationLevel {
