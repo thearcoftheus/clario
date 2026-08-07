@@ -1,6 +1,8 @@
 import { getApiHeaders } from '@/helpers/apiConfig';
+import { classifyChatIntent } from '@/helpers/classifyChatIntent';
 import route from '@/helpers/route';
 import { useAppStateStore } from '@/stores/appStateStore';
+import { useFeedbackStore } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { defineStore, storeToRefs } from 'pinia';
 import { ref } from 'vue';
@@ -22,6 +24,8 @@ export const useChatStore = defineStore('chatstore', function () {
     const appState = useAppStateStore();
     const { settings } = storeToRefs(appState);
 
+    const feedbackStore = useFeedbackStore();
+
     const isFetching = ref(false);
     const isStreaming = ref(false);
 
@@ -34,6 +38,19 @@ export const useChatStore = defineStore('chatstore', function () {
             sender: 'user' as const,
             text: message,
         };
+
+        // Telemetry (chat_message_sent, local-only): intent classification and
+        // coarse size only — the message text itself is never stored.
+        const article = historyItems.value[0];
+        feedbackStore.recordEvent({
+            type: 'chat_message_sent',
+            timestamp: Date.now(),
+            articleUrl: article.url,
+            articleTitle: article.aiTitle || article.name,
+            intent: classifyChatIntent(message),
+            wordCount: message.trim().split(/\s+/).length,
+            messageIndex: chatMessages.value.filter(m => m.sender === 'user').length + 1,
+        });
 
         chatMessages.value.push(userMessage);
 

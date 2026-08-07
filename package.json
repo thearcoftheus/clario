@@ -7,7 +7,8 @@
         "build:production": "node build.js --production",
         "format": "prettier --write resources/",
         "format:check": "prettier --check resources/",
-        "lint": "eslint . --fix"
+        "lint": "eslint . --fix",
+        "test": "vitest run"
     },
     "devDependencies": {
         "@eslint/js": "^9.19.0",
@@ -23,6 +24,7 @@
         "prettier-plugin-tailwindcss": "^0.6.11",
         "sass-embedded": "^1.89.0",
         "typescript-eslint": "^8.23.0",
+        "vitest": "^4.1.10",
         "vue-tsc": "^2.2.4"
     },
     "dependencies": {

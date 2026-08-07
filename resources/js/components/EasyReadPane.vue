@@ -63,14 +63,14 @@
                         class="flex size-6 cursor-pointer items-center justify-center rounded-full border border-gray-300"
                         :class="{ 'opacity-30': currentPage <= 1 }"
                         :disabled="currentPage <= 1"
-                        @click="prevPage"
+                        @click="onPrevPage"
                     >
                         <ChevronLeft class="size-3.5 text-purple" />
                     </button>
                     <button
                         v-if="currentPage > 1"
                         class="cursor-pointer text-sm font-bold text-purple hover:underline"
-                        @click="prevPage"
+                        @click="onPrevPage"
                     >
                         Back
                     </button>
@@ -117,6 +117,7 @@ import LearnAnotherWay from '@/components/LearnAnotherWay.vue';
 import Markdown from '@/components/Markdown.vue';
 import { useContentPagination } from '@/composables/useContentPagination';
 import { useNavigation } from '@/composables/useNavigation';
+import { useSimpleReadSession } from '@/composables/useSimpleReadSession';
 import { SimplificationLevelDisplayLabels, useAppStateStore } from '@/stores/appStateStore';
 import { useFeedbackStore } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
@@ -170,6 +171,23 @@ const { currentPage, totalPages, nextPage, prevPage, translateX } = useContentPa
     contentContainer,
     paginationTrigger,
 );
+
+// Telemetry (simple_read_session, local-only): reading-session summary for
+// the Tier 2 proxy signals. Back turns are counted here (user intent) rather
+// than by watching currentPage, which also moves on resize clamping.
+const { noteBackwardPageTurn } = useSimpleReadSession({
+    articleUrl: computed(() => currentItem.value?.url ?? null),
+    articleTitle: computed(() => (currentItem.value ? currentItem.value.aiTitle || currentItem.value.name : '')),
+    simplifiedContent: computed(() => currentItem.value?.simplifiedContent ?? ''),
+    simplificationLevel: computed(() => settings.value.simplificationLevel),
+    currentPage,
+    totalPages,
+});
+
+function onPrevPage() {
+    noteBackwardPageTurn();
+    prevPage();
+}
 
 const progressPercent = computed(() => {
     if (totalPages.value === 0) return 0;

@@ -33,9 +33,11 @@ import OnboardingPaneThankYou from '@/components/onboarding/OnboardingPaneThankY
 import OnboardingProgressDots from '@/components/onboarding/OnboardingProgressDots.vue';
 import type { FormFactor, SimplificationLevel } from '@/stores/appStateStore';
 import { useAppStateStore } from '@/stores/appStateStore';
+import { useFeedbackStore } from '@/stores/feedbackStore';
 import { ref } from 'vue';
 
 const appStateStore = useAppStateStore();
+const feedbackStore = useFeedbackStore();
 
 const currentPane = ref<1 | 2 | 3 | 4>(1);
 
@@ -45,6 +47,21 @@ const draftFormFactors = ref<FormFactor[]>([]);
 
 async function onReadingLevelNext(value: SimplificationLevel) {
     draftReadingLevel.value = value;
+
+    // Telemetry (level_switch, local-only): the onboarding choice is a
+    // baseline preference, not a struggle signal — recorded even when it
+    // matches the default so the analysis layer knows the level was chosen
+    // rather than inherited. source: 'onboarding' keeps it distinguishable.
+    feedbackStore.recordEvent({
+        type: 'level_switch',
+        timestamp: Date.now(),
+        fromLevel: appStateStore.settings.simplificationLevel,
+        toLevel: value,
+        source: 'onboarding',
+        articleUrl: null,
+        articleTitle: null,
+    });
+
     await appStateStore.updateSettings({ simplificationLevel: value });
     currentPane.value = 3;
 }

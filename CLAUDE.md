@@ -20,14 +20,15 @@ PATH="/Users/benfreda/.nvm/versions/node/v20.9.0/bin:$PATH" npm run build
 
 ### Development
 ```bash
-composer dev              # Start all services (Laravel server, queue, logs, Vite)
+composer dev              # Start all services (Laravel server, queue, logs). Needs Node 20 on PATH (see above) — npx runs concurrently. There is no Vite dev server; the extension is always built statically via npm run build.
 npm run build             # Build Chrome extension (generates ziggy routes + 3 vite builds)
 npm run build:production  # Production build (requires VITE_API_URL set or --url flag)
 ```
 
 ### Testing & Code Quality
 ```bash
-composer test             # Run Pest tests
+composer test             # Run Pest tests (PHP)
+npm test                  # Run Vitest tests (JS/TS — currently the suggestion engine + chat-intent heuristic)
 npm run lint              # ESLint with auto-fix
 npm run format            # Prettier formatting
 npm run format:check      # Check formatting without fixing
@@ -136,9 +137,11 @@ If reviving D-ID later: WatchPane.vue is Simli-only by design. Don't reintroduce
 Clario records small, structured behavioral events to inform future "adaptive defaults" work (auto-adjusting `simplificationLevel`, recommending different panes, etc.). The Clario user community is privacy-sensitive — this data **stays on the user's device and is never transmitted to a server**. That's a deliberate architectural constraint, not a future-toggle.
 
 - **Storage:** `chrome.storage.local` under the `behaviorEvents` key. Shape: `{ events: BehaviorEvent[] }`. Per Chrome profile, per install — same isolation as the `settings` key.
-- **Schema:** `resources/js/stores/feedbackStore.ts` defines a `BehaviorEvent` discriminated union. Today there is only `DifficultyFeedbackEvent` (recorded by `DifficultyFeedback.vue` at the end of Simple Read). Future event types (article completion, pane usage, settings changes) can be unioned into `BehaviorEvent` without schema migration.
+- **Schema:** `resources/js/stores/feedbackStore.ts` defines a `BehaviorEvent` discriminated union covering the Phase A Tier 1 signals (design rationale in `docs/Context_Agent_Phase_A_Event_Schema.md`): `difficulty_feedback` (DifficultyFeedback.vue), `difficulty_check_shown` (IntersectionObserver in the same component — the check's reach-rate denominator), `level_switch` (SettingsDialog.vue + OnboardingOverlay.vue; recorded at call sites, not in `updateSettings()`, to avoid a feedbackStore↔appStateStore module cycle), `pane_visit` (the `navigateTo()` choke point in Sidebar.vue — all view changes MUST route through it or telemetry undercounts), and `chat_message_sent` (chatStore.addUserMessage; stores intent classification from `helpers/classifyChatIntent.ts` + word count, NEVER message text). Phase B (Tier 2 proxies, collection-only): `simple_read_session` (`composables/useSimpleReadSession.ts`, wired into EasyReadPane) — one summary per reading session with activeMs, wordCount, backwardPageTurns, furthestSlide; measured on the Simple Read pane deliberately, NOT via content-script scroll listeners on the raw page. New event types can be unioned in without migration.
+- **Phase A is collection-only:** nothing reads these events to change behavior yet. The Phase A2 suggestion engine exists as a pure, fully unit-tested function (`resources/js/helpers/computeLevelSuggestion.ts`, tests via `npm test`) but is NOT wired into any UI — its tuning constants are placeholders awaiting Round 2 testing data. The `settings.adaptiveDifficulty` flag ("I choose it" / "Clario picks for me" in Settings) is likewise UX-only and consumed by nothing yet.
 - **No API endpoint:** there is no `/api/feedback` or equivalent route. Do not add one. The future auto-adjustment logic must run client-side over the local event log.
-- **Inspection / clearing during dev:** in the side panel's DevTools console — `chrome.storage.local.get('behaviorEvents', console.log)` and `chrome.storage.local.remove('behaviorEvents')`. A user-facing "Clear behavior history" button in Settings is a reasonable follow-up but not yet built.
+- **Retention:** pruned on load to 180 days / 5,000 events (constants in feedbackStore). Users can wipe the log via Settings → Privacy → "Clear behavior history".
+- **Inspection during dev:** in the side panel's DevTools console — `chrome.storage.local.get('behaviorEvents', console.log)` and `chrome.storage.local.remove('behaviorEvents')`.
 - **Why `chrome.storage.local` and not IndexedDB:** at ~200 bytes per event, even tens of thousands of events fit under the 5 MB cap. Migration to IndexedDB is straightforward later if scale demands it.
 
 ## Deployment

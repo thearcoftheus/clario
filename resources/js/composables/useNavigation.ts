@@ -1,9 +1,13 @@
+import type { PaneVisitTrigger } from '@/stores/feedbackStore';
 import { inject, InjectionKey } from 'vue';
 
-export type View = 'home' | 'summary' | 'chat' | 'narrate' | 'avatar';
+export const Views = ['home', 'summary', 'chat', 'narrate', 'avatar'] as const;
+export type View = (typeof Views)[number];
 
 export interface NavigationContext {
-    setActiveView: (view: View) => void;
+    // trigger feeds pane_visit telemetry (see feedbackStore); defaults to
+    // 'nav' in Sidebar.vue's implementation when omitted.
+    setActiveView: (view: View, trigger?: PaneVisitTrigger) => void;
     openSettings: () => void;
 }
 

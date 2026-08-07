@@ -7,7 +7,7 @@
             <button
                 v-if="exclude !== 'summary'"
                 class="flex flex-1 cursor-pointer items-center overflow-hidden rounded-lg border-[0.5px] border-card-border bg-gray-light px-2 py-1.5"
-                @click="nav.setActiveView('summary')"
+                @click="nav.setActiveView('summary', 'learn_another_way')"
             >
                 <div class="mr-1.5 flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-sidebar-bg">
                     <img :src="bookIcon" alt="" class="size-[24px]" />
@@ -18,7 +18,7 @@
             <button
                 v-if="exclude !== 'narrate'"
                 class="flex flex-1 cursor-pointer items-center overflow-hidden rounded-lg border-[0.5px] border-card-border bg-gray-light px-2 py-1.5"
-                @click="nav.setActiveView('narrate')"
+                @click="nav.setActiveView('narrate', 'learn_another_way')"
             >
                 <div class="mr-1.5 flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-sidebar-bg">
                     <img :src="earSoundIcon" alt="" class="size-[24px]" />
@@ -29,7 +29,7 @@
             <button
                 v-if="exclude !== 'chat'"
                 class="flex flex-1 cursor-pointer items-center overflow-hidden rounded-lg border-[0.5px] border-card-border bg-gray-light px-2 py-1.5"
-                @click="nav.setActiveView('chat')"
+                @click="nav.setActiveView('chat', 'learn_another_way')"
             >
                 <div class="mr-1.5 flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-sidebar-bg">
                     <img :src="personRaisedHandIcon" alt="" class="size-[28px]" />
@@ -40,7 +40,7 @@
             <button
                 v-if="exclude !== 'avatar'"
                 class="flex flex-1 cursor-pointer items-center overflow-hidden rounded-lg border-[0.5px] border-card-border bg-gray-light px-2 py-1.5"
-                @click="nav.setActiveView('avatar')"
+                @click="nav.setActiveView('avatar', 'learn_another_way')"
             >
                 <div class="mr-1.5 flex size-[28px] shrink-0 items-center justify-center rounded-lg bg-sidebar-bg">
                     <img :src="explainerIcon" alt="" class="size-[28px]" />

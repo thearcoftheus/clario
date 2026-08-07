@@ -2,7 +2,7 @@
     <div class="bg-sidebar-bg flex h-dvh flex-col">
         <!-- Header -->
         <header class="flex shrink-0 items-center justify-between bg-white px-4 pt-4 pb-2">
-            <button class="flex cursor-pointer items-center gap-2" @click="activeView = 'home'">
+            <button class="flex cursor-pointer items-center gap-2" @click="navigateTo('home', 'nav')">
                 <svg class="size-[40px]" viewBox="0 0 63 63" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect width="63" height="63" rx="14" fill="#5C2B85" />
                     <rect x="11" y="8" width="19" height="44" rx="3" fill="white" />
@@ -71,7 +71,7 @@
                         <!-- Read (full-width, purple) -->
                         <button
                             class="border-card-border bg-purple flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
-                            @click="activeView = 'summary'"
+                            @click="navigateTo('summary', 'home_card')"
                         >
                             <div class="bg-purple-light mr-3 flex size-[48px] shrink-0 items-center justify-center rounded-xl">
                                 <img :src="bookIcon" alt="" class="size-[36px]" />
@@ -93,7 +93,7 @@
                         <!-- Listen (full-width, purple) -->
                         <button
                             class="border-card-border bg-purple flex cursor-pointer items-center overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
-                            @click="activeView = 'narrate'"
+                            @click="navigateTo('narrate', 'home_card')"
                         >
                             <div class="bg-purple-light mr-3 flex size-[48px] shrink-0 items-center justify-center rounded-xl">
                                 <img :src="earSoundIcon" alt="" class="size-[36px]" />
@@ -117,7 +117,7 @@
                             <!-- Ask -->
                             <button
                                 class="border-card-border bg-purple-light flex flex-1 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
-                                @click="showChatModal = true"
+                                @click="navigateTo('chat', 'home_card')"
                             >
                                 <div class="bg-sidebar-bg mb-2 flex size-[36px] items-center justify-center rounded-xl">
                                     <img :src="personRaisedHandIcon" alt="" class="size-[36px]" />
@@ -134,7 +134,7 @@
                             <!-- Watch -->
                             <button
                                 class="border-card-border bg-purple-light flex flex-1 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] p-3 text-left"
-                                @click="activeView = 'avatar'"
+                                @click="navigateTo('avatar', 'home_card')"
                             >
                                 <div class="bg-sidebar-bg mb-2 flex size-[36px] items-center justify-center rounded-xl">
                                     <img :src="explainerIcon" alt="" class="size-[36px]" />
@@ -197,6 +197,7 @@ import { Toaster } from '@/components/ui/sonner';
 import WatchPane from '@/components/WatchPane.vue';
 import { NavigationKey, type View } from '@/composables/useNavigation';
 import { useAppStateStore } from '@/stores/appStateStore';
+import { useFeedbackStore, type PaneVisitTrigger } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { ChevronDown, Loader2, Newspaper } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
@@ -212,15 +213,30 @@ import settingsIcon from '@/../icons/sidebar/settings.svg';
 const activeView = ref<View>('home');
 const showChatModal = ref(false);
 
+// Single choke point for all user-initiated view changes — every navigation
+// must go through here so pane_visit telemetry doesn't undercount. The chat
+// "view" is really a modal, but it's still a pane visit for telemetry.
+function navigateTo(view: View, trigger: PaneVisitTrigger) {
+    if (view === 'chat') {
+        showChatModal.value = true;
+    } else {
+        showChatModal.value = false;
+        activeView.value = view;
+    }
+
+    const article = currentItem.value;
+    feedbackStore.recordEvent({
+        type: 'pane_visit',
+        timestamp: Date.now(),
+        pane: view,
+        trigger,
+        articleUrl: article?.url ?? null,
+        articleTitle: article ? article.aiTitle || article.name : null,
+    });
+}
+
 provide(NavigationKey, {
-    setActiveView: (view: View) => {
-        if (view === 'chat') {
-            showChatModal.value = true;
-        } else {
-            showChatModal.value = false;
-            activeView.value = view;
-        }
-    },
+    setActiveView: (view: View, trigger: PaneVisitTrigger = 'nav') => navigateTo(view, trigger),
     openSettings: () => settingsDialog.value?.open(),
 });
 
@@ -231,6 +247,8 @@ const showOnboarding = computed(() => !isLoadingSettings.value && !settings.valu
 
 const historyStore = useHistoryStore();
 const { historyItems } = storeToRefs(historyStore);
+
+const feedbackStore = useFeedbackStore();
 
 function closeSidebar() {
     window.close();

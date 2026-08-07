@@ -6,6 +6,7 @@
         padded interior, so no border/background of its own.
     -->
     <section
+        ref="sectionEl"
         aria-label="Difficulty feedback"
         class="break-before-column flex h-full flex-col justify-center px-2"
         style="break-before: column"
@@ -54,7 +55,7 @@
 import type { SimplificationLevel } from '@/stores/appStateStore';
 import { useFeedbackStore, type DifficultyChoice } from '@/stores/feedbackStore';
 import { CircleCheck, Frown, Meh, Smile } from 'lucide-vue-next';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 const props = defineProps<{
     articleUrl: string;
@@ -90,6 +91,38 @@ const answeredLabel = computed(() => {
         .pop();
     if (!recorded) return '';
     return options.find(o => o.value === recorded.choice)?.title.toLowerCase() ?? '';
+});
+
+// Telemetry: record difficulty_check_shown the first time this section is at
+// least half visible — the denominator for the check's completion rate, and a
+// coarse "reached the end of Simple Read" signal. Once per article; the
+// observer stays connected because the component survives article changes
+// (articleUrl is a reactive prop).
+const sectionEl = ref<HTMLElement | null>(null);
+let observer: IntersectionObserver | null = null;
+
+onMounted(() => {
+    if (!sectionEl.value) return;
+    observer = new IntersectionObserver(
+        entries => {
+            const visible = entries.some(entry => entry.isIntersecting);
+            if (!visible || feedbackStore.hasCheckShownFor(props.articleUrl)) return;
+            feedbackStore.recordEvent({
+                type: 'difficulty_check_shown',
+                timestamp: Date.now(),
+                articleUrl: props.articleUrl,
+                articleTitle: props.articleTitle,
+                simplificationLevel: props.simplificationLevel,
+            });
+        },
+        { threshold: 0.5 },
+    );
+    observer.observe(sectionEl.value);
+});
+
+onBeforeUnmount(() => {
+    observer?.disconnect();
+    observer = null;
 });
 
 async function onChoose(choice: DifficultyChoice) {

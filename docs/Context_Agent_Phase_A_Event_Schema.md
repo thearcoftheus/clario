@@ -1,6 +1,6 @@
 # Context Agent — Phase A Event Schema
 
-**Status:** Design brief (not yet implemented)
+**Status:** Implemented (collection layer, 2026-07-22). Phase A2 (suggestion engine, end of this doc) remains design-only.
 **Date:** 2026-07-22
 **Depends on:** `docs/Clario_Context_Agent_Signal_Research.md` (the signal research this implements), the existing `behaviorEvents` telemetry system (`resources/js/stores/feedbackStore.ts`, documented in CLAUDE.md "Behavioral telemetry (local-only)")
 
@@ -178,6 +178,8 @@ Answer the research doc's open questions from the collected data:
 
 ### Phase A2 (after ≥ ~10 difficulty answers per active user, or post-testing-round — whichever first): the suggestion engine
 
+**Status update (2026-07-22):** the engine below is implemented as a pure function in `resources/js/helpers/computeLevelSuggestion.ts` with a full Vitest suite (`npm test`). Its tuning constants (vote window, confidence bars, recency window) are exported placeholders awaiting Round 2 calibration. Still unbuilt: the nudge banner, the adaptive-mode adjuster, and the `suggestion_shown` / `suggestion_response` / adaptive-toggle events.
+
 A pure function, client-side, spec'd now so instrumentation captures everything it needs:
 
 ```
@@ -194,11 +196,15 @@ Draft decision rules (to be tuned against real logs — these encode the researc
 - **`pane_visit` escalations corroborate only,** same rule.
 - **Asymmetric bar.** Per the research's dignity finding, require strictly more evidence to suggest `simpler` than `more_detailed` — when uncertain, ask nothing, and never default downward.
 
+**Update (2026-07-22):** Settings now has a user-facing chooser for this — "I choose it" vs "Clario picks for me" (`settings.adaptiveDifficulty`, default off/manual, UX-only so far). This changes the Phase A2 delivery design: the nudge flow below applies to users in manual mode (and is the pathway to *suggest* trying adaptive mode), while users who explicitly opt into adaptive mode have granted a standing mandate — for them the engine may change the level directly, but must still make each change visible in the moment and one-tap reversible.
+
 **Delivery is a nudge, never an override:** a dismissible banner in the Easy Read pane — "Want me to use simpler words on pages like this?" — with one-tap Yes / No thanks. Accepting performs a normal `updateSettings` (which itself logs a `level_switch`; add `source: 'suggestion_accepted'` to the union then). The nudge's own outcomes become two new Phase A2 event types (`suggestion_shown`, `suggestion_response`) so the engine can learn to stop asking — two dismissals of the same suggestion suppress it for 30 days.
 
 ### Explicitly NOT in Phase A
 
 Scroll speed/revisits, normalized reading speed (dwell ÷ word count), audio/video replay tracking, hover/bounce signals. These are Tier 2/3: they only become interpretable *after* per-user Tier 1 baselines exist to validate them against (research doc, "Phase B"). Resist the temptation to instrument them "while we're in there" — every added sensor raises the privacy surface on a vulnerable population, and uncorroborated proxies are exactly what the research says not to act on.
+
+**Update (2026-07-22): Phase B collection is now instrumented** (a deliberate decision, not scope creep — the validation correlation can't run without Tier 2 data on the Tier 1 side-by-side). One new event type, `simple_read_session` (`composables/useSimpleReadSession.ts`): a per-session summary of the **Simple Read pane** — active visible time, simplified-content word count, backward page turns (the regression analog), furthest slide reached. Design choices: measured on the pane Clario controls rather than via scroll listeners on the raw web page (smaller privacy surface, and it's the surface whose difficulty we adjust); Back-button presses counted as user intent rather than inferring from page-number changes (resize clamping would pollute that); raw ingredients stored, WPM derived at analysis time; sessions under 3s discarded; a level change mid-article ends the session (WPM across regenerated content is meaningless). **The engine does not consume any of this** — that stays gated on the correlation check against difficulty answers.
 
 ---
 

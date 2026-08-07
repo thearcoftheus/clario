@@ -45,6 +45,11 @@ function isTextSize(value: unknown): value is TextSize {
 
 export type SettingsState = {
     simplificationLevel: SimplificationLevel;
+    // UX-only for now: when true, Clario will eventually set
+    // simplificationLevel automatically from the local behavior log (the
+    // Phase A2 suggestion engine — see docs/Context_Agent_Phase_A_Event_Schema.md).
+    // Nothing reads this flag yet; simplificationLevel remains authoritative.
+    adaptiveDifficulty: boolean;
     summaryLength: SummaryLength;
     textSize: TextSize;
     emoji: boolean;
@@ -59,6 +64,7 @@ function isPlaybackSpeed(value: unknown): value is number {
 
 const defaultSettings: SettingsState = {
     simplificationLevel: 'Easy',
+    adaptiveDifficulty: false,
     summaryLength: 'Medium',
     textSize: 'Medium',
     emoji: false,
@@ -86,6 +92,10 @@ export const useAppStateStore = defineStore('app', () => {
 
             if (isSimplficiationLevel(result.settings?.simplificationLevel)) {
                 settings.value.simplificationLevel = result.settings.simplificationLevel;
+            }
+
+            if (typeof result.settings.adaptiveDifficulty === 'boolean') {
+                settings.value.adaptiveDifficulty = result.settings.adaptiveDifficulty;
             }
 
             if (isSummaryLength(result.settings?.summaryLength)) {
