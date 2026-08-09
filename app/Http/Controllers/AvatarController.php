@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ApiCallCount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -130,6 +131,9 @@ class AvatarController extends Controller
             $accumAudio = '';
             $accumTimepoints = [];
             $cacheable = true;
+
+            // Cache miss (see the log line above), so this is a billable call.
+            ApiCallCount::bump(ApiCallCount::SERVICE_VIDEO_TTS);
 
             try {
                 $upstream = Http::withHeaders([
@@ -423,6 +427,8 @@ class AvatarController extends Controller
                 'textLength' => strlen($validated['text']),
             ]);
 
+            ApiCallCount::bump(ApiCallCount::SERVICE_VIDEO_TTS);
+
             $cartesiaResponse = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $cartesiaApiKey,
                 'Cartesia-Version' => '2024-11-13',
@@ -468,6 +474,8 @@ class AvatarController extends Controller
                 'faceId' => $validated['faceId'],
                 'audioSize' => strlen($audioBytes),
             ]);
+
+            ApiCallCount::bump(ApiCallCount::SERVICE_VIDEO_STREAM);
 
             $simliResponse = Http::withHeaders([
                 'Content-Type' => 'application/json',

@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\ApiMetric;
+use Illuminate\Validation\Rule;
+
 class TranslateRequest extends SettingsRequest {
 
     /**
@@ -20,6 +23,9 @@ class TranslateRequest extends SettingsRequest {
         return [
             ...parent::rules(),
             'content' => ['required', 'string'],
+            // Metrics only — recorded by TrackApiMetrics, never used to build
+            // the prompt. Optional so an older extension build still works.
+            'trigger' => ['nullable', Rule::in(ApiMetric::TRIGGERS)],
         ];
     }
 }

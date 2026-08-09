@@ -14,6 +14,13 @@ function extractContentFrom(elm: HTMLElement): string | null {
         '.ad-slot',
         '.adsbygoogle',
         'script',
+        // <style> blocks survive into innerHTML otherwise, and their CSS text
+        // is then sent to the simplification API as if it were article
+        // content. Pure noise: it costs input tokens on every call and can
+        // only confuse the model.
+        'style',
+        // Icon markup — inflates the payload and leaves empty list rows behind.
+        'svg',
         'noscript',
         'iframe',
         'hr',

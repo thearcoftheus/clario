@@ -22,6 +22,9 @@ watch(data, v => (item.simplifiedContent = v), { immediate: true });
 watch(isFetching, v => (item.isFetching = v), { immediate: true });
 watch(isStreaming, v => (item.isStreaming = v), { immediate: true });
 
-onMounted(() => send({ content: item.content, settings: settings.value }));
+// `trigger` is metrics-only — it tells the server whether this generation was
+// Clario prefetching or the user asking for a different version. It does not
+// affect the prompt or the response.
+onMounted(() => send({ content: item.content, settings: settings.value, trigger: item.trigger }));
 onBeforeUnmount(() => cancel());
 </script>

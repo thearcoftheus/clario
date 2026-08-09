@@ -22,6 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
+
+        // The `auth` middleware redirects guests to a route named `login` by
+        // default, which doesn't exist here — the starter kit's auth routes
+        // were never registered. The portal is the only authenticated area,
+        // so send guests there.
+        $middleware->redirectGuestsTo(fn() => route('portal.login'));
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

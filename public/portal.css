@@ -1,0 +1,377 @@
+/*
+ * Clario management portal styles.
+ *
+ * Hand-written on purpose: the Vite pipeline belongs to the Chrome extension
+ * (three builds, no web entry point), and adding a fourth build just for an
+ * internal review tool would be a poor trade. Plain and functional, per the
+ * build spec.
+ *
+ * Palette matches the extension: --color-purple / --color-sidebar-bg /
+ * --color-card-border from resources/css/app.css.
+ */
+
+:root {
+    --purple: #5c2b85;
+    --purple-light: #d8cce2;
+    --bg: #f5f4f1;
+    --border: #d9d6e8;
+    --card-border: #9b90f0;
+    --text: #1a1a1a;
+    --muted: #5f5f6b;
+    --danger: #b3261e;
+    --radius: 10px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+a {
+    color: var(--purple);
+}
+
+/* ---------- Layout ---------- */
+
+.masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+}
+
+.masthead h1 {
+    margin: 0;
+    font-size: 17px;
+    color: var(--purple);
+}
+
+.masthead nav {
+    display: flex;
+    gap: 16px;
+}
+
+.masthead nav a {
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.masthead nav a[aria-current="page"] {
+    text-decoration: underline;
+}
+
+.masthead .spacer {
+    margin-left: auto;
+}
+
+.masthead form {
+    display: inline;
+}
+
+.wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.wrap.narrow {
+    max-width: 420px;
+}
+
+h2 {
+    font-size: 18px;
+    margin: 32px 0 12px;
+}
+
+h2:first-child {
+    margin-top: 0;
+}
+
+h3 {
+    font-size: 15px;
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+/* ---------- Cards & stats ---------- */
+
+.card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stat {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+}
+
+.stat .value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--purple);
+    line-height: 1.2;
+}
+
+.stat .label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.delta.up {
+    color: #1a7f37;
+}
+
+.delta.down {
+    color: var(--danger);
+}
+
+.two-col {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+/* ---------- Tables ---------- */
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    font-size: 14px;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+}
+
+th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+tbody tr:hover {
+    background: #faf9ff;
+}
+
+td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--muted);
+    background: #fff;
+}
+
+/* ---------- Forms & buttons ---------- */
+
+label {
+    display: block;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='date'],
+select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+    background: #fff;
+}
+
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+button:focus-visible {
+    outline: 3px solid var(--card-border);
+    outline-offset: 2px;
+}
+
+.field {
+    margin-bottom: 14px;
+}
+
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.filters .field {
+    margin-bottom: 0;
+    min-width: 150px;
+}
+
+.btn {
+    display: inline-block;
+    padding: 9px 16px;
+    border: 1px solid var(--purple);
+    border-radius: 8px;
+    background: var(--purple);
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn.secondary {
+    background: #fff;
+    color: var(--purple);
+}
+
+.btn.link {
+    background: none;
+    border: none;
+    color: var(--purple);
+    padding: 0;
+    text-decoration: underline;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.error {
+    color: var(--danger);
+    font-size: 14px;
+    margin: 4px 0 0;
+}
+
+.error-box {
+    border: 1px solid var(--danger);
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 16px;
+    color: var(--danger);
+}
+
+/* ---------- Misc ---------- */
+
+.muted {
+    color: var(--muted);
+}
+
+.small {
+    font-size: 13px;
+}
+
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+}
+
+.pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--purple-light);
+    color: var(--purple);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.snapshot {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    max-height: 520px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 14px;
+}
+
+.chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+.legend span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+dl.detail {
+    display: grid;
+    grid-template-columns: minmax(120px, max-content) 1fr;
+    gap: 6px 16px;
+    margin: 0;
+}
+
+dl.detail dt {
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+dl.detail dd {
+    margin: 0;
+    word-break: break-word;
+    font-size: 14px;
+}

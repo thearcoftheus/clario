@@ -121,9 +121,10 @@ import { useSimpleReadSession } from '@/composables/useSimpleReadSession';
 import { SimplificationLevelDisplayLabels, useAppStateStore } from '@/stores/appStateStore';
 import { useFeedbackStore } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
+import { useReportStore } from '@/stores/reportStore';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 
 import bookIcon from '@/../icons/sidebar/book.svg';
 import settingsIcon from '@/../icons/sidebar/settings.svg';
@@ -188,6 +189,18 @@ function onPrevPage() {
     noteBackwardPageTurn();
     prevPage();
 }
+
+// Publish the slide the user is on so a feedback report can point at it.
+// Pagination state lives here rather than in a store, so the report store
+// can't read it directly. Cleared on unmount — a stale slide number on
+// another pane would be worse than none.
+const reportStore = useReportStore();
+watch(
+    [currentPage, totalPages],
+    ([slide, total]) => reportStore.setReadPosition(total > 0 ? { slide, total } : null),
+    { immediate: true },
+);
+onUnmounted(() => reportStore.setReadPosition(null));
 
 const progressPercent = computed(() => {
     if (totalPages.value === 0) return 0;

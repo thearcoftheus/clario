@@ -6,6 +6,7 @@ use App\DTO\Settings;
 use App\Http\Requests\ChatRequest;
 use App\Http\Requests\NarrationRequest;
 use App\Http\Requests\TranslateRequest;
+use App\Models\ApiCallCount;
 use App\Services\ChatAgent;
 use App\Services\HeadlineAgent;
 use App\Services\NarrationService;
@@ -46,6 +47,8 @@ class AiController extends Controller {
     }
 
     public function headline(TranslateRequest $request, HeadlineAgent $headlineAgent) {
+        ApiCallCount::bump(ApiCallCount::SERVICE_HEADLINE);
+
         $response = $headlineAgent->getHeadline(
             $request->validated('content'),
             new Settings($request->validated('settings'))
@@ -72,6 +75,8 @@ class AiController extends Controller {
     }
 
     public function translate(TranslateRequest $request, SummaryAgent $textSimplifier) {
+        ApiCallCount::bump(ApiCallCount::SERVICE_SIMPLIFY);
+
         return $this->streamResponse(
             $textSimplifier->simplify(
                 $request->validated('content'),
@@ -81,6 +86,7 @@ class AiController extends Controller {
     }
 
     public function chat(ChatRequest $request, ChatAgent $chatService) {
+        ApiCallCount::bump(ApiCallCount::SERVICE_CHAT);
 
         $messages = $request->validated('messages', []);
 

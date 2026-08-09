@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ApiCallCount;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -79,6 +80,9 @@ class NarrationService {
 
         // Make request to Google Cloud TTS API
         try {
+            // Past the cache check, so this is a real billable call.
+            ApiCallCount::bump(ApiCallCount::SERVICE_AUDIO);
+
             $response = Http::post("{$this->baseUrl}/text:synthesize?key={$this->apiKey}", $payload);
 
             if (!$response->successful()) {
@@ -271,6 +275,10 @@ class NarrationService {
             }
 
             try {
+                // Counted per chunk: long articles are split into several
+                // synthesize calls and each one is billed separately.
+                ApiCallCount::bump(ApiCallCount::SERVICE_AUDIO);
+
                 $response = Http::timeout(60)->post("{$this->betaBaseUrl}/text:synthesize?key={$this->apiKey}", $payload);
 
                 if (!$response->successful()) {

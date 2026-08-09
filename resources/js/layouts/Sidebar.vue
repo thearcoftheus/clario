@@ -160,18 +160,29 @@
 
         <template v-if="!showOnboarding">
             <!-- Footer -->
-            <footer class="flex shrink-0 items-center justify-between bg-white px-4 py-2">
+            <footer class="flex shrink-0 items-center justify-between gap-2 bg-white px-4 py-2">
                 <button class="cursor-pointer text-sm text-black underline" @click="helpDialog?.open()">Help</button>
                 <button class="cursor-pointer text-sm text-black underline" @click="aboutDialog?.open()">About</button>
+                <button
+                    class="cursor-pointer text-sm text-black underline"
+                    :aria-label="reportCopy.triggerAriaLabel"
+                    @click="reportDialog?.open()"
+                >
+                    {{ reportCopy.triggerLabel }}
+                </button>
+                <!-- Four items make this row tight at narrow sidebar widths.
+                     Flagged for Cesar's design review along with the
+                     "Give feedback" placement. -->
                 <button class="flex cursor-pointer items-center gap-1" @click="settingsDialog?.open()">
                     <img :src="settingsIcon" alt="" class="size-[14px]" />
-                    <span class="text-sm text-black underline">Advanced Settings</span>
+                    <span class="text-sm whitespace-nowrap text-black underline">Advanced Settings</span>
                 </button>
             </footer>
 
             <SettingsDialog ref="settingsDialog" />
             <HelpDialog ref="helpDialog" />
             <AboutDialog ref="aboutDialog" />
+            <ReportDialog ref="reportDialog" />
 
             <ChatModal :open="showChatModal" @close="showChatModal = false" />
         </template>
@@ -192,13 +203,16 @@ import HistoryItemHeadline from '@/components/HistoryItemHeadline.vue';
 import HistoryItemStream from '@/components/HistoryItemStream.vue';
 import ListenPane from '@/components/ListenPane.vue';
 import OnboardingOverlay from '@/components/onboarding/OnboardingOverlay.vue';
+import ReportDialog from '@/components/ReportDialog.vue';
 import SettingsDialog from '@/components/SettingsDialog.vue';
 import { Toaster } from '@/components/ui/sonner';
 import WatchPane from '@/components/WatchPane.vue';
 import { NavigationKey, type View } from '@/composables/useNavigation';
+import { reportCopy } from '@/lib/reportCopy';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useFeedbackStore, type PaneVisitTrigger } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
+import { useReportStore } from '@/stores/reportStore';
 import { ChevronDown, Loader2, Newspaper } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, provide, ref, watch } from 'vue';
@@ -257,6 +271,17 @@ function closeSidebar() {
 const settingsDialog = ref<InstanceType<typeof SettingsDialog> | null>(null);
 const helpDialog = ref<InstanceType<typeof HelpDialog> | null>(null);
 const aboutDialog = ref<InstanceType<typeof AboutDialog> | null>(null);
+const reportDialog = ref<InstanceType<typeof ReportDialog> | null>(null);
+
+// Keep the report store's idea of "where the user is" current, so a feedback
+// report names the pane without the modal having to ask. Chat is a modal
+// rather than a view, so it takes precedence over the view underneath it.
+const reportStore = useReportStore();
+watch(
+    [activeView, showChatModal],
+    ([view, chatOpen]) => reportStore.setPane(chatOpen ? 'chat' : view),
+    { immediate: true },
+);
 
 const currentItem = computed(() => historyItems.value[0] ?? null);
 
