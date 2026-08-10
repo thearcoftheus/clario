@@ -18,7 +18,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('feedback_reports', function (Blueprint $table) {
-            $table->text('original_text')->nullable()->after('page_title');
+            // mediumText, not text — see the note on simplified_text in the
+            // create migration. MySQL TEXT caps at 65,535 bytes and this
+            // column is capped at 100 KB.
+            $table->mediumText('original_text')->nullable()->after('page_title');
             $table->boolean('original_truncated')->default(false)->after('original_text');
         });
     }

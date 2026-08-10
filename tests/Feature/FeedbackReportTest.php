@@ -34,7 +34,7 @@ function reportPayload(array $overrides = []): array {
         'slide_count' => 5,
         'simplified_text' => 'This is what Clario showed.',
         'truncated' => false,
-        'extension_version' => '0.4.4',
+        'extension_version' => '0.5.9',
         'user_agent' => 'Mozilla/5.0 (Macintosh)',
     ], $overrides);
 }
@@ -60,7 +60,7 @@ test('a valid report is stored and returns 201', function() {
         ->and($report->slide_count)->toBe(5)
         ->and($report->simplified_text)->toBe('This is what Clario showed.')
         ->and($report->truncated)->toBeFalse()
-        ->and($report->extension_version)->toBe('0.4.4')
+        ->and($report->extension_version)->toBe('0.5.9')
         ->and($report->created_at)->not->toBeNull();
 });
 

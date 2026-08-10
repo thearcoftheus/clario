@@ -45,7 +45,14 @@ return new class extends Migration
 
             // What Clario was actually showing — the AI-simplified markdown,
             // all slides. Null on panes with no simplified content.
-            $table->text('simplified_text')->nullable();
+            //
+            // mediumText, NOT text: on MySQL, text() is TEXT and caps at
+            // 65,535 bytes, while these snapshots are capped at 100 KB
+            // (FeedbackReportRequest::MAX_SIMPLIFIED_TEXT_BYTES). With strict
+            // mode on — Cloudways default — a large report would error
+            // outright; without it, it would truncate silently. SQLite has no
+            // such limit, so this difference is invisible in local dev.
+            $table->mediumText('simplified_text')->nullable();
             $table->boolean('truncated')->default(false);
 
             $table->string('extension_version', 20)->nullable();

@@ -22,13 +22,10 @@ use Illuminate\Support\Str;
  */
 class PortalUsersSeeder extends Seeder
 {
-    // TODO(ben): replace the two CHANGEME addresses with Katy's and Cesar's
-    // real email before seeding on production. They are placeholders — nobody
-    // has confirmed what those addresses actually are.
     private const ACCOUNTS = [
         ['name' => 'Ben Freda', 'email' => 'ben@bfcdigital.com'],
-        ['name' => 'Katy', 'email' => 'CHANGEME-katy@example.com'],
-        ['name' => 'Cesar', 'email' => 'CHANGEME-cesar@example.com'],
+        ['name' => 'Katy Schmid', 'email' => 'Schmid@thearc.org'],
+        ['name' => 'Cesar', 'email' => 'cesar@extravirgin.studio'],
     ];
 
     public function run(): void

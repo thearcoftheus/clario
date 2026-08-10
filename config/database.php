@@ -37,9 +37,21 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
-            'journal_mode' => null,
-            'synchronous' => null,
+
+            // Clario writes to SQLite on nearly every request: TrackApiMetrics
+            // logs each inbound call, ApiCallCount bumps on provider hits, and
+            // feedback reports arrive at unpredictable times. With the SQLite
+            // defaults (rollback journal, no busy timeout) a second concurrent
+            // writer fails instantly with "database is locked" — which, with a
+            // cohort of 25-100 testers, is a matter of when rather than if.
+            //
+            // WAL lets readers continue while a write is in progress, and the
+            // busy timeout makes a blocked writer wait rather than give up.
+            // Metrics and counters swallow their own errors, but a lock during
+            // FeedbackController@store would 500 a real user's report.
+            'busy_timeout' => env('DB_BUSY_TIMEOUT', 5000),
+            'journal_mode' => env('DB_JOURNAL_MODE', 'WAL'),
+            'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
         ],
 
         'mysql' => [
