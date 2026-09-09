@@ -75,7 +75,7 @@ class FeedbackReportRequest extends FormRequest {
      */
     public function messages(): array {
         return [
-            'comment.required' => 'Please tell us what happened.',
+            'comment.required' => 'Please write a message first.',
             'comment.max' => 'That message is too long. Please shorten it.',
         ];
     }

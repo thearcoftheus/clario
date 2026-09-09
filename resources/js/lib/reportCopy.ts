@@ -14,7 +14,11 @@ export const reportCopy = {
     triggerAriaLabel: 'Give feedback about Clario',
 
     // Modal
-    heading: 'Tell us what happened',
+    // "Give us feedback" rather than the earlier "Tell us what happened":
+    // that read as if a single bad thing had to have gone wrong, while the
+    // placeholder below invites praise and suggestions too. Matches the footer
+    // button so people know they landed in the right place.
+    heading: 'Give us feedback',
     description: 'Your message goes to the people who build Clario.',
 
     commentLabel: 'Your message',
@@ -34,7 +38,7 @@ export const reportCopy = {
     // longer be true. Reword freely, but keep it explicit that the page's own
     // text is sent, not only the link.
     disclosure:
-        'We will also save the page you were on, the words from that page, and what Clario showed you, so we can fix the problem.',
+        'We will also save the page you were on, the words from that page, and what Clario showed you, so we can see what you saw.',
 
     submitLabel: 'Send',
     submittingLabel: 'Sending…',
@@ -43,7 +47,7 @@ export const reportCopy = {
 
     // Outcome states
     successHeading: 'Thank you!',
-    successBody: 'We got your message.',
+    successBody: 'Your message went to the people who build Clario.',
     doneLabel: 'Done',
 
     // Network failure — the report is queued, so this is not an error state
