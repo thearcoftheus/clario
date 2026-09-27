@@ -49,6 +49,9 @@
                         <p v-if="formValues.adaptiveDifficulty" class="mb-3 text-sm leading-snug text-black">
                             Clario will pick the reading style that fits you best, using the private notes on this
                             device about how you read. You can switch back to choosing it yourself at any time.
+                            <br />
+                            Right now Clario is using:
+                            <span class="font-bold">{{ SimplificationLevelDisplayLabels[settings.simplificationLevel] }}</span>
                         </p>
                         <p v-else class="mb-3 text-sm leading-snug text-black">
                             Pick the reading style you like best:
@@ -208,8 +211,9 @@ const simplificationLevelOrder: { value: SimplificationLevel; description: strin
 ];
 
 // "Adaptive Difficulty" internally; the user-facing labels avoid that jargon
-// and describe the outcome, per the discrete-tile convention above. UX-only
-// for now — nothing consumes the flag yet (see appStateStore.SettingsState).
+// and describe the outcome, per the discrete-tile convention above. Consumed
+// by suggestionStore: off = nudge and ask, on = change the level and offer
+// Undo (see appStateStore.SettingsState).
 const adaptiveModeOrder: { value: boolean; label: string }[] = [
     { value: false, label: 'I choose it' },
     { value: true, label: 'Clario picks for me' },
@@ -243,6 +247,18 @@ function onSave() {
             source: 'settings',
             articleUrl: currentArticle?.url ?? null,
             articleTitle: currentArticle ? currentArticle.aiTitle || currentArticle.name : null,
+        });
+    }
+
+    // Telemetry (adaptive_mode_changed, local-only): turning adaptive off
+    // shortly after Clario changed the level is the strongest "that was
+    // wrong" signal there is, and would otherwise be invisible in the log.
+    if (formValues.value.adaptiveDifficulty !== settings.value.adaptiveDifficulty) {
+        feedbackStore.recordEvent({
+            type: 'adaptive_mode_changed',
+            timestamp: Date.now(),
+            enabled: formValues.value.adaptiveDifficulty,
+            source: 'settings',
         });
     }
 

@@ -45,10 +45,11 @@ function isTextSize(value: unknown): value is TextSize {
 
 export type SettingsState = {
     simplificationLevel: SimplificationLevel;
-    // UX-only for now: when true, Clario will eventually set
-    // simplificationLevel automatically from the local behavior log (the
-    // Phase A2 suggestion engine — see docs/Context_Agent_Phase_A_Event_Schema.md).
-    // Nothing reads this flag yet; simplificationLevel remains authoritative.
+    // Who sets simplificationLevel. false ("I choose it"): the user, and
+    // Clario may only nudge. true ("Clario picks for me"): suggestionStore
+    // changes it from the local behavior log and offers Undo. Either way
+    // simplificationLevel remains the authoritative value that is sent with
+    // every /api/translate request. Design: docs/Context_Agent_Phase_A_Event_Schema.md.
     adaptiveDifficulty: boolean;
     summaryLength: SummaryLength;
     textSize: TextSize;

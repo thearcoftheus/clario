@@ -177,6 +177,53 @@ describe('computeLevelSuggestion', () => {
         expect(computeLevelSuggestion(events, 'Moderate', null, NOW)).toMatchObject({ suggest: 'simpler' });
     });
 
+    it('treats an undone adaptive change as a veto against re-suggesting that direction', () => {
+        const events = [
+            ...answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']),
+            // Clario went simpler, the user put it back — do not ask again.
+            levelSwitch('Easy', 'Moderate', { source: 'adaptive_undo' }),
+        ];
+        expect(computeLevelSuggestion(events, 'Moderate', null, NOW)).toBeNull();
+    });
+
+    it('does not boost confidence from an adaptive_undo in the suggested direction', () => {
+        const base = computeLevelSuggestion(answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']), 'Moderate', null, NOW);
+        const events = [
+            ...answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']),
+            levelSwitch('Challenging', 'Moderate', { source: 'adaptive_undo' }),
+        ];
+        expect(computeLevelSuggestion(events, 'Moderate', null, NOW)?.confidence).toBeCloseTo(base!.confidence);
+    });
+
+    it('treats an accepted suggestion as a veto in the opposite direction but never a boost', () => {
+        const veto = [
+            ...answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']),
+            levelSwitch('Easy', 'Moderate', { source: 'suggestion' }),
+        ];
+        expect(computeLevelSuggestion(veto, 'Moderate', null, NOW)).toBeNull();
+
+        const base = computeLevelSuggestion(answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']), 'Moderate', null, NOW);
+        const sameDirection = [
+            ...answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']),
+            levelSwitch('Challenging', 'Moderate', { source: 'suggestion' }),
+        ];
+        expect(computeLevelSuggestion(sameDirection, 'Moderate', null, NOW)?.confidence).toBeCloseTo(base!.confidence);
+    });
+
+    it("ignores Clario's own adaptive switches in both directions", () => {
+        const base = computeLevelSuggestion(answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']), 'Moderate', null, NOW);
+        for (const [from, to] of [
+            ['Easy', 'Moderate'],
+            ['Challenging', 'Moderate'],
+        ] as const) {
+            const events = [
+                ...answers(['too_hard', 'too_hard', 'too_hard', 'too_hard']),
+                levelSwitch(from, to, { source: 'adaptive' }),
+            ];
+            expect(computeLevelSuggestion(events, 'Moderate', null, NOW)?.confidence).toBeCloseTo(base!.confidence);
+        }
+    });
+
     it('scopes to the domain when it has enough answers', () => {
         const events = [
             // 3 too_easy on thearc.org, plus contradicting noise on another domain

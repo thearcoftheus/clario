@@ -7,7 +7,9 @@ import { ref } from 'vue';
 // Behavioral telemetry — recorded locally only, NEVER transmitted to a server.
 // See CLAUDE.md "Behavioral telemetry (local-only)" for the privacy posture,
 // and docs/Context_Agent_Phase_A_Event_Schema.md for what each event type
-// means, why it exists, and how the Phase A2 suggestion engine will use it.
+// means, why it exists, and how the Phase A2 suggestion engine uses it
+// (helpers/computeLevelSuggestion.ts + helpers/decideSuggestion.ts, driven
+// by stores/suggestionStore.ts).
 
 export const DifficultyChoices = ['too_easy', 'just_right', 'too_hard'] as const;
 export type DifficultyChoice = (typeof DifficultyChoices)[number];
@@ -19,6 +21,13 @@ export type DifficultyFeedbackEvent = {
     articleTitle: string;
     simplificationLevel: SimplificationLevel;
     choice: DifficultyChoice;
+    // How long the user took to answer, measured from the check first
+    // becoming visible in THIS session (so a check re-shown for an article
+    // seen in an earlier session measures from the re-show). Collection-only
+    // for now; the idea is to down-weight very fast answers later, since this
+    // audience may pick the agreeable answer without pausing (Cesar, Aug 7).
+    // Optional: events recorded before this field existed don't have it.
+    responseMs?: number;
 };
 
 // Fired once per article when the difficulty check first becomes visible.
@@ -33,14 +42,21 @@ export type DifficultyCheckShownEvent = {
     simplificationLevel: SimplificationLevel;
 };
 
-export const LevelSwitchSources = ['settings', 'onboarding'] as const;
+// 'settings'      — the user changed the level in SettingsDialog
+// 'onboarding'    — the initial choice during onboarding (a baseline, never a
+//                   struggle signal)
+// 'suggestion'    — the user accepted a nudge (manual mode)
+// 'adaptive'      — Clario applied a change on its own (adaptive mode)
+// 'adaptive_undo' — the user undid an adaptive change
+// How the engine weighs each source: computeLevelSuggestion.ts
+// VETO_SOURCES / BOOST_SOURCES.
+export const LevelSwitchSources = ['settings', 'onboarding', 'suggestion', 'adaptive', 'adaptive_undo'] as const;
 export type LevelSwitchSource = (typeof LevelSwitchSources)[number];
 
-// Any change to settings.simplificationLevel. Direction is derivable from
-// the SimplificationLevels ordering (Easy < Moderate < Challenging).
-// Onboarding's initial choice is recorded as a baseline (source:
-// 'onboarding'), not as a struggle signal — the analysis layer must treat
-// the two sources differently.
+// Any change to settings.simplificationLevel — every change, whoever made
+// it, so the log can always answer "why is this user at this level?".
+// Direction is derivable from the SimplificationLevels ordering
+// (Easy < Moderate < Challenging).
 export type LevelSwitchEvent = {
     type: 'level_switch';
     timestamp: number;
@@ -107,13 +123,72 @@ export type SimpleReadSessionEvent = {
     reachedEnd: boolean;
 };
 
+// ——— Phase A2: the suggestion engine's own outcomes ———
+// These runtime consts live here (not in the helpers) because the validator
+// below needs them; computeLevelSuggestion.ts re-exports the direction type.
+export const SuggestionDirections = ['simpler', 'more_detailed'] as const;
+export type SuggestionDirection = (typeof SuggestionDirections)[number];
+
+// 'nudge'    — manual mode: Clario asked, the user decides
+// 'adaptive' — adaptive mode: Clario changed the level and offered Undo
+export const SuggestionModes = ['nudge', 'adaptive'] as const;
+export type SuggestionMode = (typeof SuggestionModes)[number];
+
+export const SuggestionResponses = ['accepted', 'dismissed', 'undone'] as const;
+export type SuggestionResponse = (typeof SuggestionResponses)[number];
+
+// One per time the engine's result reached the user — as a nudge banner or
+// as an applied adaptive change. Also the "one suggestion per article" guard.
+export type SuggestionShownEvent = {
+    type: 'suggestion_shown';
+    timestamp: number;
+    articleUrl: string;
+    articleTitle: string;
+    mode: SuggestionMode;
+    direction: SuggestionDirection;
+    fromLevel: SimplificationLevel;
+    toLevel: SimplificationLevel;
+    confidence: number;
+    scope: 'domain' | 'global';
+};
+
+// What the user did with it. 'undone' only occurs with mode 'adaptive'.
+// A level change that results from 'accepted' or 'undone' is ALSO recorded
+// as a level_switch — this event keeps the funnel (shown → response)
+// analyzable in one place; the level_switch is what the engine consumes.
+// Dismissals and undos are what decideSuggestion.ts counts to stop asking.
+export type SuggestionResponseEvent = {
+    type: 'suggestion_response';
+    timestamp: number;
+    articleUrl: string;
+    articleTitle: string;
+    mode: SuggestionMode;
+    direction: SuggestionDirection;
+    response: SuggestionResponse;
+    // ms between suggestion_shown and this response.
+    responseMs?: number;
+};
+
+// The user flipped "I choose it" / "Clario picks for me". Turning adaptive
+// off shortly after an adaptive change is the strongest "that was wrong"
+// signal there is, and would otherwise be invisible in the log.
+export type AdaptiveModeChangedEvent = {
+    type: 'adaptive_mode_changed';
+    timestamp: number;
+    enabled: boolean;
+    source: 'settings' | 'onboarding';
+};
+
 export type BehaviorEvent =
     | DifficultyFeedbackEvent
     | DifficultyCheckShownEvent
     | LevelSwitchEvent
     | PaneVisitEvent
     | ChatMessageSentEvent
-    | SimpleReadSessionEvent;
+    | SimpleReadSessionEvent
+    | SuggestionShownEvent
+    | SuggestionResponseEvent
+    | AdaptiveModeChangedEvent;
 
 // Retention: at ~200 bytes/event these caps keep the log under ~1 MB, well
 // inside the 5 MB chrome.storage.local quota shared with settings/history.
@@ -132,6 +207,10 @@ function isNullableString(value: unknown): value is string | null {
     return value === null || typeof value === 'string';
 }
 
+function isOptionalNumber(value: unknown): value is number | undefined {
+    return value === undefined || typeof value === 'number';
+}
+
 function isBehaviorEvent(value: unknown): value is BehaviorEvent {
     if (!value || typeof value !== 'object') return false;
     const v = value as Record<string, unknown>;
@@ -143,7 +222,8 @@ function isBehaviorEvent(value: unknown): value is BehaviorEvent {
                 typeof v.articleUrl === 'string' &&
                 typeof v.articleTitle === 'string' &&
                 isSimplificationLevel(v.simplificationLevel) &&
-                isDifficultyChoice(v.choice)
+                isDifficultyChoice(v.choice) &&
+                isOptionalNumber(v.responseMs)
             );
         case 'difficulty_check_shown':
             return (
@@ -186,6 +266,28 @@ function isBehaviorEvent(value: unknown): value is BehaviorEvent {
                 typeof v.backwardPageTurns === 'number' &&
                 typeof v.reachedEnd === 'boolean'
             );
+        case 'suggestion_shown':
+            return (
+                typeof v.articleUrl === 'string' &&
+                typeof v.articleTitle === 'string' &&
+                SuggestionModes.includes(v.mode as SuggestionMode) &&
+                SuggestionDirections.includes(v.direction as SuggestionDirection) &&
+                isSimplificationLevel(v.fromLevel) &&
+                isSimplificationLevel(v.toLevel) &&
+                typeof v.confidence === 'number' &&
+                (v.scope === 'domain' || v.scope === 'global')
+            );
+        case 'suggestion_response':
+            return (
+                typeof v.articleUrl === 'string' &&
+                typeof v.articleTitle === 'string' &&
+                SuggestionModes.includes(v.mode as SuggestionMode) &&
+                SuggestionDirections.includes(v.direction as SuggestionDirection) &&
+                SuggestionResponses.includes(v.response as SuggestionResponse) &&
+                isOptionalNumber(v.responseMs)
+            );
+        case 'adaptive_mode_changed':
+            return typeof v.enabled === 'boolean' && (v.source === 'settings' || v.source === 'onboarding');
         default:
             return false;
     }

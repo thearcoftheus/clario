@@ -188,8 +188,12 @@
         </template>
     </div>
 
-    <HistoryItemHeadline v-for="item in historyItems" :key="'headline-' + item.date.unix()" :item="item" />
-    <HistoryItemStream v-for="item in historyItems" :key="item.date.unix()" :item="item" />
+    <!-- Keyed on the item's date so a regeneration (historyStore bumps `date`)
+         remounts the stream. Millisecond resolution, not unix(): an adaptive
+         level change followed by a quick Undo can land in the same second, and
+         a colliding key would silently skip the second regeneration. -->
+    <HistoryItemHeadline v-for="item in historyItems" :key="'headline-' + item.date.valueOf()" :item="item" />
+    <HistoryItemStream v-for="item in historyItems" :key="item.date.valueOf()" :item="item" />
 
     <Toaster />
 </template>

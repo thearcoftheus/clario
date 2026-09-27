@@ -52,6 +52,7 @@
                                 :article-url="currentItem!.url"
                                 :article-title="currentItem!.aiTitle || currentItem!.name"
                                 :simplification-level="settings.simplificationLevel"
+                                @answered="onDifficultyAnswered"
                             />
                         </div>
                     </div>
@@ -103,6 +104,13 @@
             </template>
         </div>
 
+        <!-- Reading-level suggestion (nudge or adaptive notice). Lives here,
+             outside the paginated card, so it never changes the slide count
+             and is on screen at the same time as the difficulty check. -->
+        <div v-if="suggestionStore.active?.articleUrl === currentItem?.url" class="shrink-0 px-4 pt-3">
+            <LevelSuggestionBanner />
+        </div>
+
         <!-- Learn Another Way -->
         <div class="shrink-0 px-4 pb-3 pt-3">
             <LearnAnotherWay exclude="summary" />
@@ -114,6 +122,7 @@
 import CompactArticleCard from '@/components/CompactArticleCard.vue';
 import DifficultyFeedback from '@/components/DifficultyFeedback.vue';
 import LearnAnotherWay from '@/components/LearnAnotherWay.vue';
+import LevelSuggestionBanner from '@/components/LevelSuggestionBanner.vue';
 import Markdown from '@/components/Markdown.vue';
 import { useContentPagination } from '@/composables/useContentPagination';
 import { useNavigation } from '@/composables/useNavigation';
@@ -122,6 +131,7 @@ import { SimplificationLevelDisplayLabels, useAppStateStore } from '@/stores/app
 import { useFeedbackStore } from '@/stores/feedbackStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { useReportStore } from '@/stores/reportStore';
+import { useSuggestionStore } from '@/stores/suggestionStore';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onUnmounted, ref, watch } from 'vue';
@@ -172,6 +182,20 @@ const { currentPage, totalPages, nextPage, prevPage, translateX } = useContentPa
     contentContainer,
     paginationTrigger,
 );
+
+// Adaptive difficulty: the one moment a suggestion can arise is right after
+// the user answers the difficulty check, so that is the only place the
+// engine runs. Manual mode shows a nudge; adaptive mode changes the level
+// (which regenerates this article) and offers Undo. See suggestionStore.
+const suggestionStore = useSuggestionStore();
+
+function onDifficultyAnswered() {
+    if (!currentItem.value?.url) return;
+    suggestionStore.evaluateAfterAnswer({
+        url: currentItem.value.url,
+        title: currentItem.value.aiTitle || currentItem.value.name,
+    });
+}
 
 // Telemetry (simple_read_session, local-only): reading-session summary for
 // the Tier 2 proxy signals. Back turns are counted here (user intent) rather

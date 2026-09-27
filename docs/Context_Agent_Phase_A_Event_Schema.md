@@ -1,6 +1,6 @@
 # Context Agent — Phase A Event Schema
 
-**Status:** Implemented (collection layer, 2026-07-22). Phase A2 (suggestion engine, end of this doc) remains design-only.
+**Status:** Collection layer implemented 2026-07-22. Phase A2 (acting on the log) shipped 2026-09-09 in 0.6.0 — see the status update at the end of this doc for what was built and where the design below was adjusted.
 **Date:** 2026-07-22
 **Depends on:** `docs/Clario_Context_Agent_Signal_Research.md` (the signal research this implements), the existing `behaviorEvents` telemetry system (`resources/js/stores/feedbackStore.ts`, documented in CLAUDE.md "Behavioral telemetry (local-only)")
 
@@ -178,7 +178,17 @@ Answer the research doc's open questions from the collected data:
 
 ### Phase A2 (after ≥ ~10 difficulty answers per active user, or post-testing-round — whichever first): the suggestion engine
 
-**Status update (2026-07-22):** the engine below is implemented as a pure function in `resources/js/helpers/computeLevelSuggestion.ts` with a full Vitest suite (`npm test`). Its tuning constants (vote window, confidence bars, recency window) are exported placeholders awaiting Round 2 calibration. Still unbuilt: the nudge banner, the adaptive-mode adjuster, and the `suggestion_shown` / `suggestion_response` / adaptive-toggle events.
+**Status update (2026-07-22):** the engine below is implemented as a pure function in `resources/js/helpers/computeLevelSuggestion.ts` with a full Vitest suite (`npm test`). Its tuning constants (vote window, confidence bars, recency window) are exported placeholders awaiting Round 2 calibration.
+
+**Status update (2026-09-09, shipped in 0.6.0):** the rest is built. Decisions taken against the draft below, and with Cesar's Aug 7 feedback:
+
+- **Asymmetry kept as drafted** (harder to go simpler). Cesar proposed the reverse (two "too hard" suffice, three "too easy" needed) on the grounds that frustration costs more than boredom; the research's dignity finding won, and Cesar's frustration concern is met by the nudge appearing promptly rather than by lowering the bar.
+- **Delivery split by mode.** Manual mode ("I choose it") → a dismissible nudge banner with Yes / No thanks. Adaptive mode ("Clario picks for me") → the level changes immediately (the article the user just finished regenerates, which doubles as the demonstration) with a visible notice and one-tap Undo. Both render from `components/LevelSuggestionBanner.vue` in the Easy Read footer strip, outside pagination. No auto-dismiss.
+- **Trigger point is the difficulty answer.** Difficulty answers are the only primary votes, so the engine runs exactly once, right after the user answers the check (Cesar: "right after the survey"). `helpers/decideSuggestion.ts` adds the delivery policy on top of the engine: the newest answer must be on this article at the current level and agree with the direction (so a [hard, hard, hard, hard, just_right] window never yields "you said just right — want simpler?"); one suggestion per article; ≥ 2 dismissals/undos of a direction in 30 days suppress it; one imposes a 7-day cool-down (`SINGLE_NEGATIVE_COOLDOWN_MS` — without it a "No thanks" is followed by a nudge on the very next article, since the level didn't change and the vote window still qualifies). A 7-day cool-down between adaptive changes was built, then dropped the same day: the engine already requires ≥3 fresh answers at the new level before it can move again, and the extra wall stalled the eager readers adaptive mode is for. All derived from the log; no separate suppression state.
+- **New `level_switch` sources:** `suggestion` (accepted nudge), `adaptive` (Clario's change), `adaptive_undo`. The draft's `suggestion_accepted` became `suggestion`. Engine rule table (`VETO_SOURCES` / `BOOST_SOURCES`): `settings` vetoes opposite and boosts same; `suggestion` and `adaptive_undo` veto opposite but never boost (Clario's own prompt must not ratchet Challenging → Moderate → Easy); `adaptive` and `onboarding` are ignored.
+- **New events:** `suggestion_shown` (mode, direction, from/to, confidence, scope), `suggestion_response` (accepted | dismissed | undone, with `responseMs`), `adaptive_mode_changed` (the toggle, from Settings or onboarding skip). `difficulty_feedback` gained optional `responseMs` — Cesar's latency idea, collection-only for now.
+- **Onboarding "Skip - Let Clario decide for me" now turns adaptive mode on.** It previously set nothing.
+- **Not done, deliberately:** Tier 2 (`simple_read_session`) is still not consumed; constants are uncalibrated; the "suggest trying adaptive mode after an accepted nudge" pathway and Cesar's audio/video parallels (rewind, scrub, speed changes; a spoken end-of-article check) are future work.
 
 A pure function, client-side, spec'd now so instrumentation captures everything it needs:
 

@@ -1,21 +1,24 @@
 import { SimplificationLevels, type SimplificationLevel } from '@/stores/appStateStore';
-import type { BehaviorEvent, DifficultyFeedbackEvent, LevelSwitchEvent } from '@/stores/feedbackStore';
+import type { BehaviorEvent, DifficultyFeedbackEvent, LevelSwitchEvent, LevelSwitchSource, SuggestionDirection } from '@/stores/feedbackStore';
 
 // Phase A2 suggestion engine — a pure function over the local behavior log.
 // Design and rule rationale: docs/Context_Agent_Phase_A_Event_Schema.md
-// ("Phase A2: the suggestion engine"). Not yet wired into any UI; callers
-// will be the nudge banner (manual mode) and the adaptive-mode adjuster.
+// ("Phase A2: the suggestion engine"). Called by decideSuggestion.ts, which
+// adds the delivery policy (one per article, suppression after dismissals);
+// stores/suggestionStore.ts runs both after every difficulty answer.
 //
 // The tier rules, in one paragraph: difficulty answers are the only signals
-// that can CREATE a suggestion; a recent manual level switch in the opposite
-// direction VETOES it outright (revealed preference wins); switches in the
-// same direction and Tier-1 corroborators (chat clarifications, Learn-Another-
-// Way escalations to Read) only raise confidence. The confidence bar is
-// deliberately higher for 'simpler' than for 'more_detailed' — serving
-// needlessly simple text is a dignity cost, so uncertainty never resolves
-// downward.
+// that can CREATE a suggestion; a recent user-made level switch in the
+// opposite direction VETOES it outright (revealed preference wins); manual
+// switches in the same direction and Tier-1 corroborators (chat
+// clarifications, Learn-Another-Way escalations to Read) only raise
+// confidence. The confidence bar is deliberately higher for 'simpler' than
+// for 'more_detailed' — serving needlessly simple text is a dignity cost, so
+// uncertainty never resolves downward.
 
-export type SuggestionDirection = 'simpler' | 'more_detailed';
+// The runtime const lives in feedbackStore (its validator needs it); the
+// type is re-exported here so engine callers have one import site.
+export type { SuggestionDirection } from '@/stores/feedbackStore';
 
 export type LevelSuggestion = {
     suggest: SuggestionDirection;
@@ -46,7 +49,24 @@ const EXTRA_VOTE_BONUS = 0.1; // per primary vote beyond MIN_PRIMARY_VOTES
 const SWITCH_BOOST = 0.15; // recent manual switch in the suggested direction
 const CORROBORATION_BOOST = 0.1; // per corroborating Tier-1 pattern (chat, escalation)
 
-function hostnameOf(url: string | null): string | null {
+// How each level_switch source counts (see LevelSwitchSources in feedbackStore):
+//
+//   source          opposite direction   same direction
+//   settings        veto                 boost
+//   adaptive_undo   veto                 —        (the user disagreed with Clario)
+//   suggestion      veto                 —        (a user action, so it stops
+//                                                  ping-pong; but never a boost —
+//                                                  Clario's own prompt must not
+//                                                  ratchet Challenging→Moderate→Easy)
+//   adaptive        —                    —        (Clario's change is not a
+//                                                  preference; oscillation is
+//                                                  bounded by needing ≥3 fresh
+//                                                  answers at the new level)
+//   onboarding      —                    —        (baseline, not a vote)
+export const VETO_SOURCES: readonly LevelSwitchSource[] = ['settings', 'suggestion', 'adaptive_undo'];
+export const BOOST_SOURCES: readonly LevelSwitchSource[] = ['settings'];
+
+export function hostnameOf(url: string | null): string | null {
     if (!url) return null;
     try {
         return new URL(url).hostname;
@@ -106,16 +126,18 @@ export function computeLevelSuggestion(
     const primaryVotes = suggest === 'simpler' ? hardVotes : easyVotes;
     let confidence = BASE_CONFIDENCE + EXTRA_VOTE_BONUS * (primaryVotes - MIN_PRIMARY_VOTES);
 
-    // ——— 3. Manual switches: strongest revealed preference ———
-    // Considered globally (not domain-scoped): a settings change is a
-    // statement about the user, not about one site. Onboarding choices are
-    // baseline, never votes (design doc, open decision #3).
-    const recentSwitches = events.filter(
-        (e): e is LevelSwitchEvent => e.type === 'level_switch' && e.source === 'settings' && now - e.timestamp <= RECENT_WINDOW_MS,
-    );
+    // ——— 3. User-made switches: strongest revealed preference ———
+    // Considered globally (not domain-scoped): a level change is a statement
+    // about the user, not about one site. Which sources veto and which boost
+    // is the VETO_SOURCES / BOOST_SOURCES table above.
+    const recentSwitches = events.filter((e): e is LevelSwitchEvent => e.type === 'level_switch' && now - e.timestamp <= RECENT_WINDOW_MS);
     const opposite: SuggestionDirection = suggest === 'simpler' ? 'more_detailed' : 'simpler';
-    if (recentSwitches.some(s => switchDirection(s) === opposite)) return null; // the user has spoken — veto
-    if (recentSwitches.some(s => switchDirection(s) === suggest)) confidence += SWITCH_BOOST;
+    if (recentSwitches.some(s => VETO_SOURCES.includes(s.source) && switchDirection(s) === opposite)) {
+        return null; // the user has spoken — veto
+    }
+    if (recentSwitches.some(s => BOOST_SOURCES.includes(s.source) && switchDirection(s) === suggest)) {
+        confidence += SWITCH_BOOST;
+    }
 
     // ——— 4. Corroborators: can only strengthen a 'simpler' suggestion ———
     if (suggest === 'simpler') {

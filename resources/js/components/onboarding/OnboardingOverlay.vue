@@ -7,7 +7,7 @@
                 :initial="draftReadingLevel"
                 @next="onReadingLevelNext"
                 @back="currentPane = 1"
-                @skip-question="currentPane = 3"
+                @skip-question="onReadingLevelSkip"
             />
             <OnboardingPaneFormFactor
                 v-else-if="currentPane === 3"
@@ -63,6 +63,21 @@ async function onReadingLevelNext(value: SimplificationLevel) {
     });
 
     await appStateStore.updateSettings({ simplificationLevel: value });
+    currentPane.value = 3;
+}
+
+// "Skip - Let Clario decide for me": the button says adaptive, so it turns
+// adaptive mode on. The level stays at the Easy default as the starting
+// point. (OnboardingPaneReadingLevel also emits skip-question when Save &
+// Next is pressed with nothing selected — no choice is treated the same way.)
+async function onReadingLevelSkip() {
+    feedbackStore.recordEvent({
+        type: 'adaptive_mode_changed',
+        timestamp: Date.now(),
+        enabled: true,
+        source: 'onboarding',
+    });
+    await appStateStore.updateSettings({ adaptiveDifficulty: true });
     currentPane.value = 3;
 }
 

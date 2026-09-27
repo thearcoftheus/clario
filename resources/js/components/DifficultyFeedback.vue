@@ -63,6 +63,12 @@ const props = defineProps<{
     simplificationLevel: SimplificationLevel;
 }>();
 
+const emit = defineEmits<{
+    // Fired after the answer has been recorded, so a listener that reads the
+    // event log (suggestionStore.evaluateAfterAnswer) sees the new answer.
+    answered: [choice: DifficultyChoice];
+}>();
+
 const feedbackStore = useFeedbackStore();
 
 const options: Array<{
@@ -77,10 +83,17 @@ const options: Array<{
 
 const answered = ref(feedbackStore.hasDifficultyFeedbackFor(props.articleUrl));
 
+// When the check first became visible in THIS session — the start of the
+// response-time clock (Cesar's latency idea; see responseMs in
+// feedbackStore). Tracked separately from the difficulty_check_shown event,
+// which is once-per-article across sessions.
+let shownAt: number | null = null;
+
 watch(
     () => props.articleUrl,
     url => {
         answered.value = feedbackStore.hasDifficultyFeedbackFor(url);
+        shownAt = null;
     },
 );
 
@@ -106,7 +119,9 @@ onMounted(() => {
     observer = new IntersectionObserver(
         entries => {
             const visible = entries.some(entry => entry.isIntersecting);
-            if (!visible || feedbackStore.hasCheckShownFor(props.articleUrl)) return;
+            if (!visible) return;
+            shownAt ??= Date.now();
+            if (feedbackStore.hasCheckShownFor(props.articleUrl)) return;
             feedbackStore.recordEvent({
                 type: 'difficulty_check_shown',
                 timestamp: Date.now(),
@@ -127,13 +142,17 @@ onBeforeUnmount(() => {
 
 async function onChoose(choice: DifficultyChoice) {
     answered.value = true;
+    const now = Date.now();
     await feedbackStore.recordEvent({
         type: 'difficulty_feedback',
-        timestamp: Date.now(),
+        timestamp: now,
         articleUrl: props.articleUrl,
         articleTitle: props.articleTitle,
         simplificationLevel: props.simplificationLevel,
         choice,
+        // Omitted (not null) when unknown so stored events stay compact.
+        ...(shownAt !== null ? { responseMs: now - shownAt } : {}),
     });
+    emit('answered', choice);
 }
 </script>
