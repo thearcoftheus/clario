@@ -25,10 +25,10 @@ export const useAvatarStore = defineStore('avatar', () => {
 
     // Watch history store for summary completion
     const historyStore = useHistoryStore();
-    const { historyItems } = storeToRefs(historyStore);
+    const { currentItem } = storeToRefs(historyStore);
 
     watch(
-        () => historyItems.value[0],
+        () => currentItem.value,
         (item) => {
             if (!item) return;
 

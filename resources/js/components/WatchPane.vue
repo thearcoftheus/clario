@@ -165,8 +165,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import explainerIcon from '@/../icons/sidebar/explainer.svg';
 
 const historyStore = useHistoryStore();
-const { historyItems } = storeToRefs(historyStore);
-const currentItem = computed(() => historyItems.value[0] ?? null);
+const { currentItem } = storeToRefs(historyStore);
 
 const avatarStore = useAvatarStore();
 const { scriptStatus, scriptText } = storeToRefs(avatarStore);
@@ -206,6 +205,21 @@ onMounted(() => {
         captionTimepoints.value = avatarStore.cartesiaTimepoints;
     }
 });
+
+// The panel follows the user across tabs: a switch mid-generation must not
+// leave A's avatar talking under B's title. avatarStore resets its own script
+// and audio cache on the same change.
+watch(
+    () => currentItem.value?.url,
+    () => {
+        cachedAudio = null;
+        stopGeneration();
+        stopCaptionLoop();
+        captionTimepoints.value = [];
+        currentWordIndex.value = -1;
+        simliError.value = '';
+    },
+);
 
 const showVideo = computed(() =>
     simliStatus.value === 'streaming' ||

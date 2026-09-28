@@ -23,7 +23,7 @@
                             <TableCell>{{ item.url }}</TableCell>
                             <TableCell>{{ item.content.substring(0, 100) }}...</TableCell>
                             <TableCell class="bg-card sticky right-0 z-10">
-                                <button @click="historyStore.remove(item)">
+                                <button @click="historyStore.remove(item.tabId)">
                                     <Trash2 class="h-5 w-5" />
                                 </button>
                             </TableCell>

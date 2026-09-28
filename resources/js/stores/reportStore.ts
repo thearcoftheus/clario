@@ -87,7 +87,7 @@ export const useReportStore = defineStore('report', () => {
         const historyStore = useHistoryStore();
         const appState = useAppStateStore();
 
-        const article = historyStore.historyItems[0] ?? null;
+        const article = historyStore.currentItem;
         const settings = appState.settings;
 
         const rawSimplified = article?.simplifiedContent || '';

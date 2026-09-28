@@ -188,12 +188,16 @@
         </template>
     </div>
 
-    <!-- Keyed on the item's date so a regeneration (historyStore bumps `date`)
-         remounts the stream. Millisecond resolution, not unix(): an adaptive
-         level change followed by a quick Undo can land in the same second, and
-         a colliding key would silently skip the second regeneration. -->
-    <HistoryItemHeadline v-for="item in historyItems" :key="'headline-' + item.date.valueOf()" :item="item" />
-    <HistoryItemStream v-for="item in historyItems" :key="item.date.valueOf()" :item="item" />
+    <!-- One pair per cached tab, not just the one on screen: tabs the user has
+         left keep streaming to completion, and switching back never remounts.
+         Keyed on tab + the item's date so a regeneration (historyStore bumps
+         `date`) remounts the stream. Millisecond resolution, not unix(): an
+         adaptive level change followed by a quick Undo can land in the same
+         second, and a colliding key would silently skip the second
+         regeneration. The tab id is in the key because two tabs can be added
+         in the same millisecond. -->
+    <HistoryItemHeadline v-for="item in cachedItems" :key="'headline-' + item.tabId + '-' + item.date.valueOf()" :item="item" />
+    <HistoryItemStream v-for="item in cachedItems" :key="item.tabId + '-' + item.date.valueOf()" :item="item" />
 
     <Toaster />
 </template>
@@ -264,7 +268,7 @@ const { settings, isLoadingSettings, recommendedFormFactors } = storeToRefs(appS
 const showOnboarding = computed(() => !isLoadingSettings.value && !settings.value.hasCompletedOnboarding);
 
 const historyStore = useHistoryStore();
-const { historyItems } = storeToRefs(historyStore);
+const { cachedItems, currentItem } = storeToRefs(historyStore);
 
 const feedbackStore = useFeedbackStore();
 
@@ -286,8 +290,6 @@ watch(
     ([view, chatOpen]) => reportStore.setPane(chatOpen ? 'chat' : view),
     { immediate: true },
 );
-
-const currentItem = computed(() => historyItems.value[0] ?? null);
 
 // Thumbnail load-failure fallback: reset on article change.
 const homeImageFailed = ref(false);

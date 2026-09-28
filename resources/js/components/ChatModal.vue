@@ -82,7 +82,6 @@
 <script lang="ts" setup>
 import Markdown from '@/components/Markdown.vue';
 import { useChatStore } from '@/stores/chatStore';
-import { useHistoryStore } from '@/stores/historyStore';
 import { X } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { nextTick, ref, watch } from 'vue';
@@ -100,9 +99,6 @@ watch(() => props.open, (isOpen) => {
         });
     }
 });
-
-const historyStore = useHistoryStore();
-const { historyItems } = storeToRefs(historyStore);
 
 const chatStore = useChatStore();
 const { chatMessages, isFetching, isStreaming } = storeToRefs(chatStore);

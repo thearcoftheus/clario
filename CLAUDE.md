@@ -89,6 +89,25 @@ Key variables for the extension build:
 - `VITE_API_URL` - Backend server URL (localhost for dev, production URL for deployment)
 - `VITE_API_KEY` - API key baked into extension (matches `CLARIO_API_KEY` on server)
 
+## Side panel tab model (multi-tab)
+
+Chrome side panels are **per-window**: one `sidepanel.html` document stays open while the user moves between the tabs of that window. Clario deliberately does not use `chrome.sidePanel.setOptions({ tabId })` to get per-tab panels — Chrome reloads the panel document whenever the effective path changes between tabs, so "per-tab" would mean a full reload (and a refetch) on every switch.
+
+Instead the panel keeps a **per-tab cache**. `stores/historyStore.ts` holds one `HistoryItem` per `tabId` (`cachedItems`) plus a pointer to the tab on screen (`currentTabId` → `currentItem`). `Sidebar.vue` mounts a `HistoryItemHeadline` / `HistoryItemStream` pair for *every* cached item, so tabs the user has left keep streaming to completion (cache warming) and switching back is instant and free. Consumers read `currentItem`; `historyItems` is a deprecated single-element alias kept only so the orphaned components (`Chat.vue`, `History.vue`, `Narrate.vue`, `NarrateAdvanced.vue`, `PageSummary.vue`) still compile.
+
+`helpers/initSidebarListeners.ts` is the glue to the Chrome APIs; the decisions are pure, unit-tested functions in `helpers/tabNavigation.ts`, `staleGuard.ts`, `tabCache.ts` and `settingsSignature.ts`. The rules:
+
+- **A background tab never triggers a fetch.** This was the tester-reported bug ("Clario was trying to read tabs I wasn't on"): `tabs.onUpdated` fires for every tab in the window and several times per load. Only the active tab finishing a navigation to a *different* URL (hash-insensitive) fetches. A background tab that navigated just has its cached item dropped, so it refetches when activated.
+- **Activation moves the pointer immediately** (a cache hit renders at once) and fetches only on a miss, after a 300 ms settle (`FETCH_DEBOUNCE_MS`) so flicking through tabs doesn't fan out a paid generation per tab passed over. One shared timer: only the last activation fetches, and only if that tab is still the one on screen.
+- **Stale replies are dropped.** Every extraction carries a per-tab token (`createStaleGuard`); a reply that lands after a newer request for that tab, or after the tab navigated, is ignored. The content script's `pageLoaded` from the active tab is the freshest read of the page and wins over any extraction still in flight.
+- **`add()` is idempotent:** same URL + byte-identical extracted content keeps the cached item, with its simplified text, headline and chat. A plain reload is therefore a cache hit unless the page actually changed, and the inject-and-retry path can no longer add the same page twice.
+- **Settings changes regenerate only the current tab** (`trigger: 'regenerate'`). Each item stores the `settingsSignature` (level | length | emoji) it was generated under; a cached tab whose signature is stale regenerates lazily when next activated, tagged `prefetch` (see "Usage tracking" — it's Clario catching up on its own, not a request the user made on that article).
+- **Cap:** `MAX_CACHED_TABS = 8`, evicting the least recently active tab (`lastActiveAt`), never the current one. Eviction unmounts, and so cancels, the stream.
+- **Chat is per tab.** The transcript lives on `HistoryItem.chat`. `chatStore` keys in-flight requests by tab: a reply keeps streaming into the message it was started for while the user is on another tab, and only the tab on screen drives `isFetching` / `isStreaming`. Closing or navigating the tab aborts its request.
+- **Two tabs on the same URL are two items** and two generations. Rare, and sharing would tangle per-tab chat and regeneration. Revisit if it shows up in the provider counters.
+- The Listen and Watch panes stop playback when `currentItem.url` changes under them. Their audio caches (`listenStore`, `avatarStore`) are still single-slot per URL, so returning to A after generating audio on B regenerates.
+- **Telemetry:** a tab switch is not a `pane_visit` (the user didn't navigate inside the panel). `useSimpleReadSession` ends A's session and starts B's on the URL change, exactly as it does for any article change.
+
 ## Orphaned Code: Readability / Reading Level
 
 The Flesch-Kincaid reading level feature was removed from the toolbar widget during a Phase 2 redesign. The code is intentionally kept in place — it computes a reading grade level (Easy/Moderate/Challenging/Advanced) for any page's text and could be reintroduced in the sidebar, toolbar, or as input to other AI features in the future.
@@ -176,7 +195,7 @@ The portal's Usage panel derives human-level actions from the **existing inbound
 Most routes are already clean one-per-action signals (`narrate-sync`, `avatar.cartesia.tts`, `chat`, `reports.store` are all click-gated). The exception is `translate`, which fires automatically on every sidebar open **and** again on every content-affecting settings change — so the raw count reads like enthusiasm for Simple Read when most of it is prefetch.
 
 The `trigger` column separates them (`ApiMetric::TRIGGERS`):
-- `prefetch` — Clario generated it on its own when the sidebar opened. Set in `historyStore.add()`.
+- `prefetch` — Clario generated it on its own: when the sidebar opened, or when a cached tab is activated after the reading settings changed while it was in the background (lazy catch-up in `historyStore.setCurrentTab()`). Set in `historyStore.add()` and `setCurrentTab()`.
 - `regenerate` — the user changed reading level / summary length / emoji on an article they had open. Set in the `historyStore` settings watcher, **before** it bumps `date` — the date bump is what remounts `HistoryItemStream`, and the new component reads `item.trigger` on mount, so reversing those two lines silently tags everything as prefetch.
 
 `trigger` is metrics-only: validated in `TranslateRequest`, recorded by `TrackApiMetrics`, and never used to build a prompt. It's nullable and optional, so rows predating the column — and older extension builds still in the wild — keep working; the dashboard counts a null trigger as neither action rather than inventing a value.

@@ -34,7 +34,7 @@ export const useSuggestionStore = defineStore('suggestion', () => {
     const { settings } = storeToRefs(appState);
     const feedbackStore = useFeedbackStore();
     const historyStore = useHistoryStore();
-    const { historyItems } = storeToRefs(historyStore);
+    const { currentItem } = storeToRefs(historyStore);
 
     // The banner renders while this is set. At most one at a time.
     const active = ref<ActiveSuggestion | null>(null);
@@ -43,11 +43,12 @@ export const useSuggestionStore = defineStore('suggestion', () => {
     // below can tell its own change apart from one made in SettingsDialog.
     let expectedLevel: SimplificationLevel | null = null;
 
-    // A suggestion belongs to the article it was made on. historyStore.add()
-    // re-unshifts a revisited URL, so an equality check in the template alone
-    // would let a stale Undo resurface later — clear it here instead.
+    // A suggestion belongs to the article it was made on. The panel follows
+    // the user across tabs and a tab can navigate, so an equality check in the
+    // template alone would let a stale Undo resurface later — clear it here
+    // instead.
     watch(
-        () => historyItems.value[0]?.url,
+        () => currentItem.value?.url,
         () => {
             active.value = null;
         },

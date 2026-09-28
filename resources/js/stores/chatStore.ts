@@ -3,100 +3,123 @@ import { classifyChatIntent } from '@/helpers/classifyChatIntent';
 import route from '@/helpers/route';
 import { useAppStateStore } from '@/stores/appStateStore';
 import { useFeedbackStore } from '@/stores/feedbackStore';
-import { useHistoryStore } from '@/stores/historyStore';
+import { CHAT_GREETING, useHistoryStore, type HistoryItem } from '@/stores/historyStore';
+import type { ChatMessage } from '@/types/types';
 import { defineStore, storeToRefs } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
 
-export type ChatMessage = {
-    sender: 'user' | 'assistant';
-    text: string;
+export type { ChatMessage } from '@/types/types';
+
+type ChatPhase = 'fetching' | 'streaming';
+
+type InflightRequest = {
+    item: HistoryItem;
+    controller: AbortController;
+    reader: ReadableStreamDefaultReader<Uint8Array> | null;
 };
 
+// Each tab's transcript lives on its HistoryItem (historyStore), so the panel
+// following the user to another tab shows that tab's conversation. A reply
+// that is still streaming keeps writing into the message it was started for,
+// wherever the user is now; only the tab on screen drives isFetching /
+// isStreaming.
 export const useChatStore = defineStore('chatstore', function () {
-    const chatMessages = ref<ChatMessage[]>([{ sender: 'assistant', text: 'Do you have any questions about this article?' }]);
-
-    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-    let abortController: AbortController | null = null;
-
     const historyStore = useHistoryStore();
-    const { historyItems } = storeToRefs(historyStore);
+    const { currentItem, currentTabId, cachedItems } = storeToRefs(historyStore);
 
     const appState = useAppStateStore();
     const { settings } = storeToRefs(appState);
 
     const feedbackStore = useFeedbackStore();
 
-    const isFetching = ref(false);
-    const isStreaming = ref(false);
+    // Non-reactive: AbortController and the stream reader must not be wrapped
+    // in a proxy. The reactive `phases` map is what the UI watches.
+    const inflight = new Map<number, InflightRequest>();
+    const phases = ref<Map<number, ChatPhase>>(new Map());
+
+    const chatMessages = computed<ChatMessage[]>(() => currentItem.value?.chat ?? [CHAT_GREETING]);
+
+    const isFetching = computed(() => currentTabId.value !== null && phases.value.get(currentTabId.value) === 'fetching');
+    const isStreaming = computed(() => currentTabId.value !== null && phases.value.get(currentTabId.value) === 'streaming');
 
     function addUserMessage(message: string) {
+        const item = currentItem.value;
+        if (!item) return;
         if (message.trim().length === 0) return;
-        if (isStreaming.value || isFetching.value) return;
-        if (historyItems.value.length === 0) return;
-
-        const userMessage = {
-            sender: 'user' as const,
-            text: message,
-        };
+        if (phases.value.has(item.tabId)) return;
 
         // Telemetry (chat_message_sent, local-only): intent classification and
         // coarse size only — the message text itself is never stored.
-        const article = historyItems.value[0];
         feedbackStore.recordEvent({
             type: 'chat_message_sent',
             timestamp: Date.now(),
-            articleUrl: article.url,
-            articleTitle: article.aiTitle || article.name,
+            articleUrl: item.url,
+            articleTitle: item.aiTitle || item.name,
             intent: classifyChatIntent(message),
             wordCount: message.trim().split(/\s+/).length,
-            messageIndex: chatMessages.value.filter(m => m.sender === 'user').length + 1,
+            messageIndex: item.chat.filter(m => m.sender === 'user').length + 1,
         });
 
-        chatMessages.value.push(userMessage);
+        item.chat.push({ sender: 'user', text: message });
 
-        getAssistantResponse();
+        void getAssistantResponse(item);
     }
 
-    async function getAssistantResponse() {
-        if (isStreaming.value || isFetching.value) return;
+    function finish(tabId: number) {
+        inflight.delete(tabId);
+        phases.value.delete(tabId);
+    }
 
-        isFetching.value = true;
-        abortController = new AbortController();
+    async function getAssistantResponse(item: HistoryItem) {
+        const tabId = item.tabId;
+        if (phases.value.has(tabId)) return;
 
-        chatMessages.value.push({
-            sender: 'assistant',
-            text: '',
-        });
+        const controller = new AbortController();
+        inflight.set(tabId, { item, controller, reader: null });
+        phases.value.set(tabId, 'fetching');
 
-        let response;
+        // Push, then read back the reactive proxy so chunks appended below
+        // re-render. Captured now: the user may be on another tab by the time
+        // they arrive.
+        item.chat.push({ sender: 'assistant', text: '' });
+        const assistantMessage = item.chat[item.chat.length - 1];
+
+        let response: Response;
 
         try {
             response = await fetch(route('chat'), {
                 method: 'POST',
                 headers: getApiHeaders({ Accept: 'text/event-stream' }),
                 body: JSON.stringify({
-                    content: historyItems.value[0].content,
-                    messages: chatMessages.value.slice(0, -1),
+                    content: item.content,
+                    messages: item.chat.slice(0, -1),
                     settings: settings.value,
                 }),
-                signal: abortController.signal,
+                signal: controller.signal,
             });
         } catch (e) {
-            console.error('Network error', e);
-            isFetching.value = false;
+            if (!isAbortError(e)) console.error('Network error', e);
+            finish(tabId);
             return;
         }
 
         if (!response.ok || !response.body) {
             console.error('Bad response', response.status);
-            isFetching.value = false;
+            finish(tabId);
             return;
         }
 
-        isFetching.value = false;
-        isStreaming.value = true;
+        const entry = inflight.get(tabId);
+        if (!entry || entry.controller !== controller) {
+            // Cancelled while the request was in flight.
+            void response.body.cancel();
+            return;
+        }
 
-        reader = response.body.getReader();
+        phases.value.set(tabId, 'streaming');
+
+        const reader = response.body.getReader();
+        entry.reader = reader;
         const decoder = new TextDecoder();
 
         try {
@@ -104,30 +127,35 @@ export const useChatStore = defineStore('chatstore', function () {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
-                chatMessages.value[chatMessages.value.length - 1].text += chunk;
+                assistantMessage.text += decoder.decode(value, { stream: true });
             }
         } catch (e) {
-            if (typeof e === 'object' && e !== null && 'name' in e && e.name !== 'AbortError') {
-                console.error('Stream read error:', e);
-            }
+            if (!isAbortError(e)) console.error('Stream read error:', e);
         } finally {
-            isStreaming.value = false;
-            reader?.cancel();
-            reader = null;
+            reader.cancel().catch(() => {});
+            if (inflight.get(tabId)?.controller === controller) finish(tabId);
         }
     }
 
-    function cancelAssistantResponse() {
-        abortController?.abort();
-        abortController = null;
+    function cancelAssistantResponse(tabId: number | null = currentTabId.value) {
+        if (tabId === null) return;
+        const entry = inflight.get(tabId);
+        if (!entry) return;
 
-        reader?.cancel();
-        reader = null;
-
-        isStreaming.value = false;
-        isFetching.value = false;
+        entry.controller.abort();
+        entry.reader?.cancel().catch(() => {});
+        finish(tabId);
     }
+
+    // A tab that closed or navigated replaces or drops its item; a reply
+    // still streaming for the old item has nowhere to go and would keep the
+    // new article's chat disabled.
+    watch(cachedItems, items => {
+        for (const [tabId, entry] of Array.from(inflight.entries())) {
+            const stillCached = items.some(i => toRaw(i) === toRaw(entry.item));
+            if (!stillCached) cancelAssistantResponse(tabId);
+        }
+    });
 
     return {
         chatMessages,
@@ -137,3 +165,7 @@ export const useChatStore = defineStore('chatstore', function () {
         isStreaming,
     };
 });
+
+function isAbortError(e: unknown): boolean {
+    return typeof e === 'object' && e !== null && 'name' in e && e.name === 'AbortError';
+}

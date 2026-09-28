@@ -76,7 +76,6 @@ const defaultSettings: SettingsState = {
 
 export const useAppStateStore = defineStore('app', () => {
     const settings = ref<SettingsState>(defaultSettings);
-    const isExtractingContent = ref(true);
     const isLoadingSettings = ref(true);
 
     function loadSettingsFromStorage() {
@@ -147,7 +146,6 @@ export const useAppStateStore = defineStore('app', () => {
 
     return {
         settings,
-        isExtractingContent,
         isLoadingSettings,
         recommendedFormFactors,
         updateSettings,

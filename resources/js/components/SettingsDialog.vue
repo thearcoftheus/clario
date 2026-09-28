@@ -176,7 +176,7 @@ const { settings } = storeToRefs(appState);
 
 const feedbackStore = useFeedbackStore();
 const historyStore = useHistoryStore();
-const { historyItems } = storeToRefs(historyStore);
+const { currentItem } = storeToRefs(historyStore);
 
 // Working copy used by the form. Refreshed from the canonical settings each
 // time the dialog opens so any external updates (e.g. from onboarding) are
@@ -238,7 +238,7 @@ function onSave() {
     // than inside updateSettings() because feedbackStore imports from
     // appStateStore — recording there would create a module cycle.
     if (formValues.value.simplificationLevel !== settings.value.simplificationLevel) {
-        const currentArticle = historyItems.value[0] ?? null;
+        const currentArticle = currentItem.value;
         feedbackStore.recordEvent({
             type: 'level_switch',
             timestamp: Date.now(),

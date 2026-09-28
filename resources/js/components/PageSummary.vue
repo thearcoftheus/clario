@@ -13,18 +13,14 @@
 <script lang="ts" setup>
 import Markdown from '@/components/Markdown.vue';
 import StyledTab from '@/components/ui/StyledTab.vue';
-import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 
 const historyStore = useHistoryStore();
-const { historyItems } = storeToRefs(historyStore);
-
-const appState = useAppStateStore();
-const { isExtractingContent } = storeToRefs(appState);
+const { historyItems, isExtractingCurrent } = storeToRefs(historyStore);
 
 const isLoading = computed(() => {
-    return isExtractingContent.value || historyItems.value[0]?.isFetching;
+    return isExtractingCurrent.value || historyItems.value[0]?.isFetching;
 });
 </script>

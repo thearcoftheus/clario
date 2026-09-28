@@ -142,19 +142,17 @@ import settingsIcon from '@/../icons/sidebar/settings.svg';
 const nav = useNavigation();
 
 const historyStore = useHistoryStore();
-const { historyItems } = storeToRefs(historyStore);
+const { currentItem, isExtractingCurrent } = storeToRefs(historyStore);
 
 const appState = useAppStateStore();
-const { isExtractingContent, settings } = storeToRefs(appState);
+const { settings } = storeToRefs(appState);
 
 const textSizeClass = computed(() => `size-${settings.value.textSize.toLowerCase()}`);
 
 const readingLevelLabel = computed(() => SimplificationLevelDisplayLabels[settings.value.simplificationLevel]);
 
-const currentItem = computed(() => historyItems.value[0] ?? null);
-
 const isLoading = computed(() => {
-    return isExtractingContent.value || (currentItem.value?.isFetching && !currentItem.value?.simplifiedContent);
+    return isExtractingCurrent.value || (currentItem.value?.isFetching && !currentItem.value?.simplifiedContent);
 });
 
 const contentContainer = ref<HTMLElement | null>(null);

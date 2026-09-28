@@ -5,7 +5,7 @@ import { useAppStateStore } from '@/stores/appStateStore';
 import { HistoryItem } from '@/stores/historyStore';
 import axios from 'axios';
 import { storeToRefs } from 'pinia';
-import { onMounted } from 'vue';
+import { onBeforeUnmount, onMounted } from 'vue';
 
 const { item } = defineProps<{
     item: HistoryItem;
@@ -14,12 +14,17 @@ const { item } = defineProps<{
 const appState = useAppStateStore();
 const { settings } = storeToRefs(appState);
 
+// Cancelled on unmount: the item was regenerated (remounting this component
+// with a fresh request) or its tab went away, so a late reply must not clear
+// the loading flag under the new request.
+const abortController = new AbortController();
+
 onMounted(async () => {
     try {
         const response = await axios.post(
             route('headline'),
             { content: item.content, settings: settings.value },
-            { headers: getApiHeaders() },
+            { headers: getApiHeaders(), signal: abortController.signal },
         );
 
         if (response.data.title) {
@@ -29,9 +34,14 @@ onMounted(async () => {
             item.aiSummary = response.data.summary;
         }
     } catch (error) {
+        if (axios.isCancel(error)) return;
         console.error('Failed to fetch headline:', error);
     } finally {
-        item.isHeadlineLoading = false;
+        if (!abortController.signal.aborted) {
+            item.isHeadlineLoading = false;
+        }
     }
 });
+
+onBeforeUnmount(() => abortController.abort());
 </script>

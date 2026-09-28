@@ -138,11 +138,9 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import earSoundIcon from '@/../icons/sidebar/ear-sound.svg';
 
 const historyStore = useHistoryStore();
-const { historyItems } = storeToRefs(historyStore);
+const { currentItem } = storeToRefs(historyStore);
 
 const appState = useAppStateStore();
-
-const currentItem = computed(() => historyItems.value[0] ?? null);
 
 const {
     isGenerating,
@@ -160,6 +158,7 @@ const {
     tryRestore,
     play,
     pause,
+    cleanup,
     seekTo,
     setSpeed,
     formatTime,
@@ -297,4 +296,15 @@ onMounted(() => {
         tryRestore(url);
     }
 });
+
+// The panel follows the user across tabs. Stop this pane's audio when the
+// article under it changes and pick up the new article's cached audio, if
+// any, rather than keep A's narration playing under B's title.
+watch(
+    () => currentItem.value?.url,
+    url => {
+        cleanup();
+        if (url) tryRestore(url);
+    },
+);
 </script>
