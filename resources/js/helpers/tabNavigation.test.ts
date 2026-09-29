@@ -92,9 +92,13 @@ describe('decideTabUpdate', () => {
         expect(decideTabUpdate(update({ change: {} }))).toBe('ignore');
     });
 
-    it('invalidates when the tab goes somewhere unreadable, only if something was cached', () => {
-        expect(decideTabUpdate(update({ tab: { url: 'chrome://newtab' }, change: { status: 'complete' } }))).toBe('invalidate');
+    it('clears when the tab goes somewhere unreadable, only if something was cached', () => {
+        expect(decideTabUpdate(update({ tab: { url: 'chrome://newtab' }, change: { status: 'complete' } }))).toBe('clear');
         expect(decideTabUpdate(update({ tab: { url: 'chrome://newtab' }, cachedUrl: null, change: { status: 'complete' } }))).toBe('ignore');
+    });
+
+    it('clears a background tab that went somewhere unreadable too', () => {
+        expect(decideTabUpdate(update({ tab: { url: 'chrome://settings', active: false }, change: { status: 'complete' } }))).toBe('clear');
     });
 });
 

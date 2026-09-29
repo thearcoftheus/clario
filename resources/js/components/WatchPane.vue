@@ -157,6 +157,7 @@ import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
 import { useAvatarStore, type Timepoint } from '@/stores/avatarStore';
 import { useHistoryStore } from '@/stores/historyStore';
+import { isAbortError } from '@/helpers/isAbortError';
 import { SimliClient, generateSimliSessionToken, generateIceServers } from 'simli-client';
 import { Loader2, Pause, Play } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
@@ -381,13 +382,17 @@ async function setupSimli(): Promise<SimliClient> {
         iceServers,
     );
 
+    // A client that has been stopped and replaced (tab switch, Stop, a new
+    // generation) must not flip the status of whatever is on screen now.
     client.on('disconnected', () => {
+        if (simliClient !== client) return;
         if (simliStatus.value === 'streaming') {
             simliStatus.value = 'finished';
         }
     });
 
     client.on('failed', () => {
+        if (simliClient !== client) return;
         simliStatus.value = 'error';
         simliError.value = 'WebRTC connection failed';
     });
@@ -425,7 +430,15 @@ async function pumpAudio(client: SimliClient): Promise<void> {
 }
 
 async function startGeneration() {
-    if (!scriptText.value || !videoRef.value || !audioRef.value) return;
+    const articleUrl = currentItem.value?.url;
+    const script = scriptText.value;
+    if (!articleUrl || !script || !videoRef.value || !audioRef.value) return;
+
+    // The panel follows the user across tabs, and this function awaits
+    // several slow steps. After each one, if the article on screen is no
+    // longer the one we started for, the URL watcher has already stopped
+    // everything — just get out without touching the pane's state.
+    const stale = () => disposed || currentItem.value?.url !== articleUrl;
 
     try {
         simliError.value = '';
@@ -453,7 +466,7 @@ async function startGeneration() {
             captionTimepoints.value = [];
             cartesiaState = 'streaming';
             abortController = new AbortController();
-            fullAudioPromise = fetchCartesiaSSE(scriptText.value, abortController.signal)
+            fullAudioPromise = fetchCartesiaSSE(script, abortController.signal)
                 .then(audio => {
                     cartesiaState = 'done';
                     return audio;
@@ -468,7 +481,7 @@ async function startGeneration() {
         // (potentially) still streaming chunks in. On a cache hit this still
         // gates time-to-first-frame on Simli's setup time only.
         const client = await setupSimli();
-        if (disposed) {
+        if (stale()) {
             client.stop();
             return;
         }
@@ -478,29 +491,31 @@ async function startGeneration() {
         const pumpPromise = pumpAudio(client);
 
         // Once Cartesia is fully drained we know the final audio buffer; cache
-        // it so "Watch Again" and next-session restore work without re-fetching.
+        // it under the article it was made for so "Watch Again" and a return
+        // to this tab work without re-fetching. Not if we've moved on: the URL
+        // watcher has cleared the caption timepoints that go with it.
         const fullAudio = await fullAudioPromise;
-        const articleUrl = currentItem.value?.url;
-        if (articleUrl) {
-            avatarStore.cacheCartesiaAudio({
-                audio: fullAudio,
-                timepoints: captionTimepoints.value,
-                url: articleUrl,
-            });
-        }
+        if (stale()) return;
+        avatarStore.cacheCartesiaAudio({
+            audio: fullAudio,
+            timepoints: captionTimepoints.value,
+            url: articleUrl,
+        });
         cachedAudio = fullAudio;
 
         // Wait for the pump to finish sending everything to Simli.
         await pumpPromise;
+        if (stale()) return;
 
         // Then wait for the avatar to actually finish playing through (pump
         // sends faster than real-time, so playback continues after we stop
         // sending). Add 2s slack for the trailing audio + Simli buffer.
         const audioDurationMs = (fullAudio.length / 32000) * 1000;
         const waitEnd = Date.now() + audioDurationMs + 2000;
-        while (Date.now() < waitEnd && simliStatus.value === 'streaming') {
+        while (Date.now() < waitEnd && simliStatus.value === 'streaming' && !stale()) {
             await new Promise(resolve => setTimeout(resolve, 200));
         }
+        if (stale()) return;
 
         if (simliStatus.value === 'streaming') {
             if (simliClient) {
@@ -510,6 +525,10 @@ async function startGeneration() {
             simliStatus.value = 'finished';
         }
     } catch (error: any) {
+        // An abort is Stop, a tab switch or unmount having already reset the
+        // pane — not a failure to show. Likewise anything that lands after
+        // the article changed.
+        if (isAbortError(error) || stale()) return;
         console.error('[Watch] Generation error:', error);
         if (abortController) {
             abortController.abort();

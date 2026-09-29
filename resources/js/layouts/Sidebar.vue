@@ -232,18 +232,23 @@ import explainerIcon from '@/../icons/sidebar/explainer.svg';
 import personRaisedHandIcon from '@/../icons/sidebar/person-raised-hand.svg';
 import settingsIcon from '@/../icons/sidebar/settings.svg';
 
-const activeView = ref<View>('home');
+const historyStore = useHistoryStore();
+// activeView is derived from the tab on screen (historyStore.viewByTab), so a
+// tab switch restores the pane that tab was last on — Home for a tab we have
+// never seen — without touching navigateTo or pane_visit telemetry.
+const { cachedItems, currentItem, currentTabId, currentView: activeView } = storeToRefs(historyStore);
 const showChatModal = ref(false);
 
 // Single choke point for all user-initiated view changes — every navigation
 // must go through here so pane_visit telemetry doesn't undercount. The chat
-// "view" is really a modal, but it's still a pane visit for telemetry.
+// "view" is really a modal, but it's still a pane visit for telemetry. Tab
+// switches deliberately bypass this: the user didn't navigate inside the panel.
 function navigateTo(view: View, trigger: PaneVisitTrigger) {
     if (view === 'chat') {
         showChatModal.value = true;
     } else {
         showChatModal.value = false;
-        activeView.value = view;
+        historyStore.setCurrentView(view);
     }
 
     const article = currentItem.value;
@@ -267,10 +272,14 @@ const { settings, isLoadingSettings, recommendedFormFactors } = storeToRefs(appS
 
 const showOnboarding = computed(() => !isLoadingSettings.value && !settings.value.hasCompletedOnboarding);
 
-const historyStore = useHistoryStore();
-const { cachedItems, currentItem } = storeToRefs(historyStore);
-
 const feedbackStore = useFeedbackStore();
+
+// The chat modal sits over the pane; the transcript underneath is already
+// per tab, so on a switch just close the modal rather than show it over a
+// different article (or over an empty Home).
+watch(currentTabId, () => {
+    showChatModal.value = false;
+});
 
 function closeSidebar() {
     window.close();

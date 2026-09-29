@@ -23,7 +23,7 @@
         <!-- Content card -->
         <div class="mx-4 mb-5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-[0.5px] border-card-border bg-white">
             <!-- Audio player bar (only visible once audio is generated/cached) -->
-            <div v-if="hasAudio" class="shrink-0 rounded-t-xl bg-purple px-4 py-3">
+            <div v-if="hasAudio && words.length > 0" class="shrink-0 rounded-t-xl bg-purple px-4 py-3">
                 <div class="flex items-center gap-3">
                     <!-- Play/Pause button -->
                     <button
@@ -133,7 +133,7 @@ import { useAppStateStore } from '@/stores/appStateStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { Loader2, Pause, Play } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import earSoundIcon from '@/../icons/sidebar/ear-sound.svg';
 
@@ -155,10 +155,8 @@ const {
     words,
     speed,
     generate,
-    tryRestore,
     play,
     pause,
-    cleanup,
     seekTo,
     setSpeed,
     formatTime,
@@ -285,26 +283,10 @@ watch(currentWordIndex, (idx) => {
     }
 });
 
-// On mount, try to restore cached audio (instant if available, no API call).
-// If no cache, the user lands on the "Ready to listen" state and clicks
-// Generate Audio to start TTS. This matches the Watch pane's click-to-generate
-// pattern (Round 1 testing feedback #1: audio should mirror video's explicit
-// generate flow + wait-time messaging).
-onMounted(() => {
-    const url = currentItem.value?.url;
-    if (url) {
-        tryRestore(url);
-    }
-});
-
-// The panel follows the user across tabs. Stop this pane's audio when the
-// article under it changes and pick up the new article's cached audio, if
-// any, rather than keep A's narration playing under B's title.
-watch(
-    () => currentItem.value?.url,
-    url => {
-        cleanup();
-        if (url) tryRestore(url);
-    },
-);
+// Cached audio restores by itself (instant, no API call): useListenPlayer
+// follows listenStore for the article on screen, on mount and across tab
+// switches. With no cache the user lands on "Ready to generate audio" and
+// clicks Generate — the same explicit flow as the Watch pane (Round 1
+// testing feedback #1: audio should mirror video's generate + wait-time
+// messaging).
 </script>

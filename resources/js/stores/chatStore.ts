@@ -1,3 +1,4 @@
+import { isAbortError } from '@/helpers/isAbortError';
 import { getApiHeaders } from '@/helpers/apiConfig';
 import { classifyChatIntent } from '@/helpers/classifyChatIntent';
 import route from '@/helpers/route';
@@ -165,7 +166,3 @@ export const useChatStore = defineStore('chatstore', function () {
         isStreaming,
     };
 });
-
-function isAbortError(e: unknown): boolean {
-    return typeof e === 'object' && e !== null && 'name' in e && e.name === 'AbortError';
-}

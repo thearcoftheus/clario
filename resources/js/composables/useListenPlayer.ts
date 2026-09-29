@@ -1,39 +1,50 @@
 import { getApiHeaders } from '@/helpers/apiConfig';
 import route from '@/helpers/route';
 import { useAppStateStore } from '@/stores/appStateStore';
+import { useHistoryStore } from '@/stores/historyStore';
 import { useListenStore } from '@/stores/listenStore';
 import axios from 'axios';
-import { onBeforeUnmount, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
-interface Timepoint {
-    markName: string;
-    timeSeconds: number;
-}
-
+/**
+ * Playback for the Listen pane. Everything about *which* audio exists —
+ * the words, whether a generation is in flight, the last error — is derived
+ * from listenStore for the article on screen, so a tab switch can never
+ * leave one article's transcript in the pane under another's title. This
+ * composable owns only the HTMLAudioElement and its playback state.
+ */
 export function useListenPlayer() {
     const listenStore = useListenStore();
     const appStateStore = useAppStateStore();
+    const { currentItem } = storeToRefs(useHistoryStore());
 
-    const isGenerating = ref(false);
+    const currentUrl = computed(() => currentItem.value?.url ?? null);
+    // Hit only if the cached audio was made from the text now on screen, so a
+    // regeneration under new settings is a miss until the user generates again.
+    const entry = computed(() => listenStore.find(currentUrl.value, currentItem.value?.simplifiedContent));
+    const words = computed(() => entry.value?.words ?? []);
+    const timepoints = computed(() => entry.value?.timepoints ?? []);
+    const isGenerating = computed(() => currentUrl.value !== null && listenStore.isGenerating(currentUrl.value));
+    const error = computed(() => (currentUrl.value ? listenStore.errorFor(currentUrl.value) : null));
+
     const isPlaying = ref(false);
     const isPaused = ref(false);
     const hasAudio = ref(false);
-    const error = ref<string | null>(null);
 
     const currentTime = ref(0);
     const duration = ref(0);
     const progress = ref(0);
     const currentWordIndex = ref(-1);
 
-    const words = ref<string[]>([]);
-    const timepoints = ref<Timepoint[]>([]);
     const speed = ref(appStateStore.settings.playbackSpeed);
 
     let audioElement: HTMLAudioElement | null = null;
+    // The article the current audio element was built for.
+    let loadedUrl: string | null = null;
     let blobUrl: string | null = null;
     let animFrameId: number | null = null;
     let estimatedTimings: number[] | null = null;
-    let disposed = false;
 
     /**
      * Build estimated word start times weighted by character length.
@@ -126,34 +137,14 @@ export function useListenPlayer() {
     }
 
     /**
-     * Try to restore from the listen store (cached audio from a previous visit).
-     * Returns true if restored successfully.
+     * Generate audio for an article. Writes only to listenStore, under the
+     * URL captured at click time: if the user has moved to another tab by the
+     * time the reply lands, the audio waits in the cache for their return and
+     * the `entry` watcher below never sees it. Nothing here needs to know
+     * whether the pane is still mounted.
      */
-    function restoreFromStore(articleUrl: string): boolean {
-        if (
-            listenStore.audioBase64 &&
-            listenStore.generatedForUrl === articleUrl &&
-            listenStore.words.length > 0
-        ) {
-            words.value = listenStore.words;
-            timepoints.value = listenStore.timepoints;
-            estimatedTimings = null;
-            createAudioElement(listenStore.audioBase64, listenStore.lastPosition);
-            return true;
-        }
-        return false;
-    }
-
     async function generate(content: string, articleUrl: string, voice: string = 'en-US-Neural2-C') {
-        // Try restoring from store first
-        if (restoreFromStore(articleUrl)) {
-            return;
-        }
-
-        if (isGenerating.value) return;
-
-        isGenerating.value = true;
-        error.value = null;
+        if (!listenStore.startGeneration(articleUrl)) return;
 
         try {
             const response = await axios.post(
@@ -163,31 +154,20 @@ export function useListenPlayer() {
             );
 
             const data = response.data;
-            const generatedWords = data.text.split(/\s+/).filter((w: string) => w.length > 0);
-            const generatedTimepoints = data.timepoints || [];
-
-            // Cache to the global store regardless of local component lifecycle —
-            // if the user navigated away mid-fetch, the next visit can still restore.
-            listenStore.cacheAudio({
-                audio: data.audio,
-                words: generatedWords,
-                timepoints: generatedTimepoints,
-                url: articleUrl,
-            });
-
-            if (disposed) return;
-
-            words.value = generatedWords;
-            timepoints.value = generatedTimepoints;
-            estimatedTimings = null;
-
-            createAudioElement(data.audio);
+            listenStore.cacheAudio(
+                {
+                    url: articleUrl,
+                    content,
+                    audio: data.audio,
+                    words: data.text.split(/\s+/).filter((w: string) => w.length > 0),
+                    timepoints: data.timepoints || [],
+                },
+                currentUrl.value,
+            );
+            listenStore.finishGeneration(articleUrl);
         } catch (e: any) {
-            if (disposed) return;
             console.error('Failed to generate audio:', e);
-            error.value = e.response?.data?.message || 'Failed to generate audio';
-        } finally {
-            if (!disposed) isGenerating.value = false;
+            listenStore.finishGeneration(articleUrl, e.response?.data?.message || 'Failed to generate audio');
         }
     }
 
@@ -279,9 +259,10 @@ export function useListenPlayer() {
     function cleanup() {
         stopHighlightLoop();
         // Save position to store before destroying
-        if (audioElement && hasAudio.value) {
-            listenStore.savePosition(audioElement.currentTime, duration.value);
+        if (audioElement && hasAudio.value && loadedUrl) {
+            listenStore.savePosition(loadedUrl, audioElement.currentTime, duration.value);
         }
+        loadedUrl = null;
         if (audioElement) {
             audioElement.pause();
             audioElement.removeAttribute('src');
@@ -306,10 +287,29 @@ export function useListenPlayer() {
         return `${m}:${s.toString().padStart(2, '0')}`;
     }
 
-    onBeforeUnmount(() => {
-        disposed = true;
-        cleanup();
-    });
+    // The one place the audio element follows the cache. Fires on mount, on a
+    // tab switch either way, when a generation finishes for the article on
+    // screen (miss → hit), and when the text is regenerated under new
+    // settings (hit → miss). A generation finishing for some other article
+    // leaves `entry` untouched, so nothing here runs.
+    watch(
+        entry,
+        cached => {
+            if (!cached) {
+                cleanup();
+                return;
+            }
+            if (loadedUrl === cached.url && hasAudio.value) return;
+            cleanup();
+            estimatedTimings = null;
+            loadedUrl = cached.url;
+            listenStore.touch(cached.url);
+            createAudioElement(cached.audioBase64, cached.lastPosition);
+        },
+        { immediate: true },
+    );
+
+    onBeforeUnmount(cleanup);
 
     return {
         isGenerating,
@@ -324,13 +324,11 @@ export function useListenPlayer() {
         words,
         speed,
         generate,
-        tryRestore: restoreFromStore,
         play,
         pause,
         stop,
         seekTo,
         setSpeed,
         formatTime,
-        cleanup,
     };
 }

@@ -23,7 +23,11 @@ function stripFragment(url: string): string {
     return i === -1 ? url : url.slice(0, i);
 }
 
-export type TabUpdateDecision = 'ignore' | 'fetch' | 'invalidate';
+// 'invalidate': the tab is on its way to another article — drop the cached
+// item but keep whatever pane the user was in. 'clear': the tab no longer has
+// a readable page at all — drop the item *and* forget the pane, so the tab
+// starts over on Home (decideActivation's 'switch-and-clear' is the same idea).
+export type TabUpdateDecision = 'ignore' | 'fetch' | 'invalidate' | 'clear';
 
 export type TabUpdateInput = {
     myWindowId: number | undefined;
@@ -44,8 +48,9 @@ export function decideTabUpdate({ myWindowId, tab, change, cachedUrl }: TabUpdat
 
     if (!isExtractableUrl(tab.url)) {
         // The tab went somewhere we cannot read (chrome://, the Web Store…).
-        // Whatever we cached for it describes a page that is gone.
-        return cachedUrl ? 'invalidate' : 'ignore';
+        // Whatever we cached for it describes a page that is gone, and so
+        // does the pane the user had open on it.
+        return cachedUrl ? 'clear' : 'ignore';
     }
 
     const urlChanged = cachedUrl === null || !sameArticleUrl(cachedUrl, tab.url);

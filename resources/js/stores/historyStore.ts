@@ -1,3 +1,5 @@
+import type { View } from '@/composables/useNavigation';
+import { forgetView as forgetViewFor, rememberView, viewForTab } from '@/helpers/paneMemory';
 import { settingsSignature } from '@/helpers/settingsSignature';
 import { pickEviction, shouldReplace } from '@/helpers/tabCache';
 import { useAppStateStore } from '@/stores/appStateStore';
@@ -70,12 +72,20 @@ export const useHistoryStore = defineStore('store', function () {
     // False until the initial "which tab is active" query answers, so the
     // panel shows a spinner rather than the empty state on first paint.
     const hasResolvedInitialTab = ref(false);
+    // The pane each tab was last on. Sidebar.vue's activeView is derived from
+    // this, so switching tabs restores the pane without going through
+    // navigateTo (a tab switch is not a pane_visit). Bounded by open tabs:
+    // every close hits forgetTab. Eviction of the cached item does not forget
+    // the pane — an evicted tab that is still open just refetches into it.
+    const viewByTab = ref<Map<number, View>>(new Map());
 
     const currentSignature = computed(() => settingsSignature(settings.value));
 
     const currentItem = computed<HistoryItem | null>(
         () => cachedItems.value.find(item => item.tabId === currentTabId.value) ?? null,
     );
+
+    const currentView = computed<View>(() => viewForTab(viewByTab.value, currentTabId.value));
 
     const isExtractingCurrent = computed(
         () => !hasResolvedInitialTab.value || (currentTabId.value !== null && pendingTabIds.value.has(currentTabId.value)),
@@ -129,9 +139,27 @@ export const useHistoryStore = defineStore('store', function () {
         return itemForTab(tabId)!;
     }
 
+    // Drops the cached item only. Same-tab navigation calls this while the
+    // next page loads, and the user's pane must survive that.
     function remove(tabId: number) {
         cachedItems.value = cachedItems.value.filter(item => item.tabId !== tabId);
         pendingTabIds.value.delete(tabId);
+    }
+
+    function setCurrentView(view: View) {
+        viewByTab.value = rememberView(viewByTab.value, currentTabId.value, view);
+    }
+
+    // The tab no longer has a readable page: next time it is on screen it
+    // starts over on Home.
+    function forgetView(tabId: number) {
+        viewByTab.value = forgetViewFor(viewByTab.value, tabId);
+    }
+
+    // The tab is gone (closed or replaced): item and pane both go.
+    function forgetTab(tabId: number) {
+        remove(tabId);
+        forgetView(tabId);
     }
 
     /**
@@ -197,11 +225,15 @@ export const useHistoryStore = defineStore('store', function () {
         cachedItems,
         currentItem,
         currentTabId,
+        currentView,
         isExtractingCurrent,
         historyItems,
         itemForTab,
         add,
         remove,
+        setCurrentView,
+        forgetView,
+        forgetTab,
         setCurrentTab,
         setPending,
         markInitialTabResolved,

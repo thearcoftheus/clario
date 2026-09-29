@@ -141,6 +141,7 @@ export default async function initSidebarListeners() {
 
         if (decision === 'switch-and-clear') {
             invalidate(tabId);
+            historyStore.forgetView(tabId);
         } else if (decision === 'switch-and-fetch') {
             if (immediate) getPageContent(tabId);
             else scheduleFetch(tabId);
@@ -203,6 +204,11 @@ export default async function initSidebarListeners() {
 
         if (decision === 'fetch') {
             getPageContent(tabId);
+        } else if (decision === 'clear') {
+            // No readable page any more: the pane the user had open on this
+            // tab is about the article that just went away.
+            invalidate(tabId);
+            historyStore.forgetView(tabId);
         } else if (decision === 'invalidate') {
             invalidate(tabId);
             // The active tab is loading a page we will read as soon as it
@@ -217,7 +223,7 @@ export default async function initSidebarListeners() {
     chrome.tabs.onRemoved.addListener((tabId, { windowId }) => {
         if (!inMyWindow(windowId)) return;
         guard.forget(tabId);
-        historyStore.remove(tabId);
+        historyStore.forgetTab(tabId);
         // Chrome follows this with onActivated for whichever tab takes over.
         if (historyStore.currentTabId === tabId) historyStore.setCurrentTab(null);
     });
@@ -226,6 +232,6 @@ export default async function initSidebarListeners() {
     // own onUpdated / onActivated; the old one just needs forgetting.
     chrome.tabs.onReplaced.addListener((_addedTabId, removedTabId) => {
         guard.forget(removedTabId);
-        historyStore.remove(removedTabId);
+        historyStore.forgetTab(removedTabId);
     });
 }
