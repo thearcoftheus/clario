@@ -375,11 +375,11 @@ class AvatarController extends Controller
     }
 
     /**
-     * Delete cached avatar files older than $daysOld days. Not wired to a
-     * scheduler in code; intended to be invoked manually or from a future
-     * scheduled command. PCM16 files grow ~5x faster than the MP3s under
-     * `storage/narrations/`, so this directory needs more aggressive pruning
-     * than its Listen-pane counterpart.
+     * Delete cached avatar files older than $daysOld days. Run daily by the
+     * `clario:prune-audio-cache` command (see routes/console.php). PCM16 files
+     * grow ~5x faster than the MP3s under `storage/narrations/`, and the
+     * timepoint JSON here holds the actual words, so this cache is the more
+     * important one to keep short-lived.
      */
     public function cleanupCache(int $daysOld = 7): int
     {

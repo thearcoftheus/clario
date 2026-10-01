@@ -153,6 +153,8 @@ If reviving D-ID later: WatchPane.vue is Simli-only by design. Don't reintroduce
 - `storage/narrations/` — MP3 + JSON timepoints for the Listen pane, written by `NarrationService::generateAudioWithTimepoints`. Cleaned up via `NarrationService::cleanupCache($daysOld)`.
 - `storage/avatar/` — PCM16 + JSON timepoints for the Watch pane, written by `AvatarController::cartesiaTTS` on cache miss. Cleaned up via `AvatarController::cleanupCache($daysOld)`. **Grows ~5× faster than `narrations/`** because PCM16 is uncompressed — a 5-minute article is ~10 MB here vs ~2 MB in `narrations/`. Plan to prune more aggressively in production.
 
+**Both caches are pruned daily** by `php artisan clario:prune-audio-cache --days=7` (`app/Console/Commands/PruneAudioCache.php`), scheduled at 03:30 in `routes/console.php`. This is a privacy control as much as a disk-space one: the MP3/PCM is a spoken rendering of the simplified article, and the avatar timepoint JSON stores the actual words (`markName`), so nothing derived from page content should sit on the server indefinitely. The schedule only runs if the server's cron calls `schedule:run` (see Deployment). Run it by hand with a different `--days` if needed.
+
 ## Behavioral telemetry (local-only)
 
 Clario records small, structured behavioral events to inform future "adaptive defaults" work (auto-adjusting `simplificationLevel`, recommending different panes, etc.). The Clario user community is privacy-sensitive — this data **stays on the user's device and is never transmitted to a server**. That's a deliberate architectural constraint, not a future-toggle.
@@ -225,6 +227,7 @@ Small authenticated Blade app for the team to review feedback and watch usage. v
   - Web server must not buffer SSE responses. The `/api/avatar/cartesia/tts` endpoint returns `text/event-stream` and sets `X-Accel-Buffering: no` (defeats nginx buffering) plus `Content-Encoding: identity` (defeats gzip middleware). Verify nothing in the stack overrides those headers — the streaming latency win for the Watch pane depends on bytes arriving incrementally.
   - PHP `output_buffering` should be `Off` or low (`4096`); the controller calls `ob_end_clean()` inside the response closure so even non-zero values are usually safe.
 - **After deploying new backend code:** `php artisan optimize:clear && php artisan route:cache`, then reload PHP-FPM if applicable (Cloudways handles this via its dashboard).
+- **Cron (required for cache pruning):** the Laravel scheduler needs one entry in the Cloudways cron job manager (Application → Cron Job Management → Advanced): `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1`. Without it `clario:prune-audio-cache` never runs and the TTS caches grow forever. Verify with `php artisan schedule:list` on the box.
 - **Feedback reports + portal (first deploy only):**
   - `php artisan migrate` — creates `feedback_reports` and `api_call_counts`.
   - `php artisan db:seed --class=PortalUsersSeeder` — creates the portal accounts and prints one-time passwords. **Edit the placeholder addresses in the seeder first.**
