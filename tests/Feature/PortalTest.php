@@ -559,3 +559,160 @@ test('an article that discusses advertising keeps its own words', function() {
     expect($plain)->toContain('Advertisement revenue fell this year.')
         ->toContain('The advertisement was controversial.');
 });
+
+// ---------------------------------------------------------------- installs panel
+
+function recordActivity(string $browserId, string $day): void {
+    App\Models\InstallActivity::record($browserId, $day);
+}
+
+function thisMonday(): Illuminate\Support\Carbon {
+    return now()->startOfWeek(Illuminate\Support\Carbon::MONDAY);
+}
+
+test('total installs counts distinct browsers', function() {
+    $a = Str::uuid()->toString();
+    recordActivity($a, now()->subDays(3)->toDateString());
+    recordActivity($a, now()->toDateString());
+    recordActivity(Str::uuid()->toString(), now()->toDateString());
+
+    $response = $this->actingAs(portalUser())->get('/portal');
+
+    expect($response->viewData('installTotal'))->toBe(2);
+});
+
+test('the installs panel renders with no data at all', function() {
+    $this->actingAs(portalUser())->get('/portal')
+        ->assertOk()
+        ->assertSee('Installs')
+        ->assertSee('Unique installs, all time');
+});
+
+test('the weekly series splits new and returning browsers', function() {
+    $a = Str::uuid()->toString();
+    $b = Str::uuid()->toString();
+    $lastMonday = thisMonday()->subWeek()->toDateString();
+
+    recordActivity($a, $lastMonday);
+    recordActivity($a, now()->toDateString());
+    recordActivity($b, now()->toDateString());
+
+    $buckets = $this->actingAs(portalUser())->get('/portal?period=week')->viewData('installSeries')['buckets'];
+    $thisWeek = end($buckets);
+    $lastWeek = $buckets[count($buckets) - 2];
+
+    expect($thisWeek)->toMatchArray(['active' => 2, 'new' => 1, 'returning' => 1, 'current' => true])
+        ->and($lastWeek)->toMatchArray(['active' => 1, 'new' => 1, 'returning' => 0, 'current' => false]);
+});
+
+test('a browser first seen before the window is not counted as new inside it', function() {
+    $a = Str::uuid()->toString();
+    recordActivity($a, now()->subWeeks(20)->toDateString());
+    recordActivity($a, now()->toDateString());
+
+    $response = $this->actingAs(portalUser())->get('/portal?period=week');
+    $thisWeek = end($response->viewData('installSeries')['buckets']);
+
+    expect($thisWeek)->toMatchArray(['active' => 1, 'new' => 0, 'returning' => 1])
+        ->and($response->viewData('installTotal'))->toBe(1);
+});
+
+test('the weekly series is zero-filled and oldest first', function() {
+    $buckets = $this->actingAs(portalUser())->get('/portal?period=week')->viewData('installSeries')['buckets'];
+
+    expect($buckets)->toHaveCount(12)
+        ->and($buckets[0]['start'])->toBe(thisMonday()->subWeeks(11)->toDateString())
+        ->and($buckets[11]['start'])->toBe(thisMonday()->toDateString())
+        ->and($buckets[11]['current'])->toBeTrue()
+        ->and(array_sum(array_column($buckets, 'active')))->toBe(0);
+});
+
+test('the period selector defaults to week and ignores unknown values', function() {
+    $user = portalUser();
+
+    expect($this->actingAs($user)->get('/portal')->viewData('installPeriod'))->toBe('week')
+        ->and($this->actingAs($user)->get('/portal?period=bogus')->viewData('installPeriod'))->toBe('week');
+
+    $month = $this->actingAs($user)->get('/portal?period=month')->viewData('installSeries')['buckets'];
+    $day = $this->actingAs($user)->get('/portal?period=day')->viewData('installSeries')['buckets'];
+
+    expect($month)->toHaveCount(12)
+        ->and(end($month)['start'])->toBe(now()->startOfMonth()->toDateString())
+        ->and($day)->toHaveCount(30)
+        ->and(end($day)['start'])->toBe(now()->toDateString());
+});
+
+test('the this-week cards use the same Monday boundary as the weekly chart', function() {
+    recordActivity(Str::uuid()->toString(), thisMonday()->toDateString());
+    recordActivity(Str::uuid()->toString(), thisMonday()->subDay()->toDateString());
+
+    $response = $this->actingAs(portalUser())->get('/portal?period=week');
+    $thisWeek = end($response->viewData('installSeries')['buckets']);
+
+    expect($response->viewData('installThisWeek'))->toBe(['active' => 1, 'new' => 1])
+        ->and($thisWeek['active'])->toBe(1);
+});
+
+test('week buckets start on Monday even for Sunday activity', function() {
+    // SQLite's `weekday 1` stays put on a Monday, so the naive expression
+    // would send Mondays to the previous week. Pin the behaviour.
+    $expr = App\Portal\InstallStats::bucketExpr('week', 'd');
+
+    $sunday = Illuminate\Support\Facades\DB::selectOne("select $expr as w from (select '2026-11-01' as d)")->w;
+    $monday = Illuminate\Support\Facades\DB::selectOne("select $expr as w from (select '2026-11-02' as d)")->w;
+    $saturday = Illuminate\Support\Facades\DB::selectOne("select $expr as w from (select '2026-11-07' as d)")->w;
+    $newYear = Illuminate\Support\Facades\DB::selectOne("select $expr as w from (select '2026-01-04' as d)")->w;
+
+    expect($sunday)->toBe('2026-10-26')
+        ->and($monday)->toBe('2026-11-02')
+        ->and($saturday)->toBe('2026-11-02')
+        ->and($newYear)->toBe('2025-12-29');
+});
+
+test('bucket labels read as dates people use', function() {
+    $label = fn(string $period, string $start) => App\Portal\InstallStats::label($period, $start);
+
+    expect($label('day', '2026-11-03'))->toBe('Nov 3')
+        ->and($label('week', '2026-11-02'))->toBe('Nov 2–8')
+        ->and($label('week', '2026-10-26'))->toBe('Oct 26–Nov 1')
+        ->and($label('week', '2025-12-29'))->toBe('Dec 29–Jan 4')
+        ->and($label('month', '2026-11-01'))->toBe('Nov 2026');
+});
+
+test('the installs chart tooltips carry the bucket label and the numbers', function() {
+    recordActivity(Str::uuid()->toString(), now()->toDateString());
+
+    $label = App\Portal\InstallStats::label('week', thisMonday()->toDateString());
+
+    $this->actingAs(portalUser())->get('/portal?period=week')
+        ->assertSee('data-label="' . $label . ' (so far)"', false)
+        ->assertSee('data-series="New" data-value="1"', false)
+        ->assertSee('Returning');
+});
+
+test('the pre-0.8.0 caveat is shown', function() {
+    $this->actingAs(portalUser())->get('/portal')->assertSee('before 0.8.0');
+});
+
+test('the dashboard renders usage, then installs, then feedback', function() {
+    $html = $this->actingAs(portalUser())->get('/portal')->getContent();
+
+    $usage = strpos($html, '<h2>Usage</h2>');
+    $installs = strpos($html, '<h2 id="installs">Installs</h2>');
+    $feedback = strpos($html, '<h2>Feedback</h2>');
+
+    expect($usage)->toBeLessThan($installs)
+        ->and($installs)->toBeLessThan($feedback);
+});
+
+test('chart segments carry their numbers for the hover tooltip', function() {
+    logRequest('translate', 'prefetch');
+    logRequest('translate', 'prefetch');
+    logRequest('chat');
+
+    $today = now()->format('D, M j');
+
+    $this->actingAs(portalUser())->get('/portal')
+        ->assertSee('data-label="' . $today . '" data-series="Articles opened" data-value="2"', false)
+        ->assertSee('data-label="' . $today . '" data-series="Questions asked" data-value="1"', false);
+});

@@ -1,6 +1,9 @@
-// Anonymous per-browser-profile identifier, attached to feedback reports so
+// Anonymous per-browser-profile identifier. Attached to feedback reports so
 // we can see that several reports came from the same browser without knowing
-// whose browser it is.
+// whose browser it is, and (since 0.8.0) sent as the `X-Clario-Browser-Id`
+// header on every API request so the server can count how many browsers used
+// Clario on a given day. The server keeps only (browser_id, day) — see
+// `install_activity` in CLAUDE.md — never what was read or when.
 //
 // Deliberate properties:
 //   - Identifies a browser profile, not a person. One person on two machines
@@ -34,6 +37,18 @@ async function resolveBrowserId(): Promise<string> {
     await chrome.storage.local.set({ [BROWSER_ID_KEY]: fresh });
     cachedId = fresh;
     return fresh;
+}
+
+/**
+ * The ID if it has already been resolved in this context, else null.
+ *
+ * Synchronous on purpose: `getApiHeaders()` is sync and is passed to
+ * `useStream` at component setup, where nothing can await. Entry points call
+ * `getBrowserId()` at startup so this is populated before the first request.
+ * A null here just means the header is omitted — never a failed request.
+ */
+export function peekBrowserId(): string | null {
+    return cachedId;
 }
 
 /**

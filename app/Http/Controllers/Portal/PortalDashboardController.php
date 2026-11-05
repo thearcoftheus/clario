@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\ApiCallCount;
 use App\Models\ApiMetric;
 use App\Models\FeedbackReport;
+use App\Portal\InstallStats;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
- * Portal dashboard. Usage first, feedback second — cost visibility is the
- * thing most likely to need action while the tester cohort ramps up.
+ * Portal dashboard. Usage first, then installs (how many browsers), then
+ * feedback, then API metrics — cost visibility is the thing most likely to
+ * need action while the tester cohort ramps up.
  */
 class PortalDashboardController extends Controller
 {
@@ -46,9 +49,16 @@ class PortalDashboardController extends Controller
          'note' => 'Reports submitted from the sidebar.'],
     ];
 
-    public function __invoke(): View
+    public function __invoke(Request $request): View
     {
+        $installPeriod = InstallStats::period($request->query('period'));
+        $installs = new InstallStats();
+
         return view('portal.dashboard', [
+            'installPeriod' => $installPeriod,
+            'installTotal' => $installs->totalInstalls(),
+            'installThisWeek' => $installs->thisWeek(),
+            'installSeries' => $installs->series($installPeriod),
             'usageActions' => $this->usageActions(),
             'usageActionSeries' => $this->usageActionSeries(),
             'usageSeries' => $this->usageSeries(),

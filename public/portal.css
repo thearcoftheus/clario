@@ -375,3 +375,103 @@ dl.detail dd {
     word-break: break-word;
     font-size: 14px;
 }
+
+/* ---------- Installs panel ---------- */
+
+.card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.card-head h3 {
+    margin: 0;
+}
+
+.segmented {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 13px;
+}
+
+.segmented a {
+    padding: 4px 12px;
+    background: #fff;
+    color: var(--purple);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.segmented a + a {
+    border-left: 1px solid var(--border);
+}
+
+.segmented a[aria-current="true"] {
+    background: var(--purple);
+    color: #fff;
+}
+
+.segmented a:focus-visible {
+    outline: 2px solid var(--purple);
+    outline-offset: -2px;
+}
+
+/* ---------- Chart hover tooltip (public/portal.js) ---------- */
+
+.chart rect[data-bar] {
+    cursor: default;
+}
+
+.chart rect[data-bar]:hover {
+    opacity: 0.8;
+}
+
+.chart-tip {
+    position: fixed;
+    z-index: 10;
+    min-width: 160px;
+    max-width: 280px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(26, 26, 26, 0.12);
+    font-size: 13px;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+.chart-tip-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.chart-tip-row {
+    display: grid;
+    grid-template-columns: 11px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+}
+
+.chart-tip-row.is-current {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.chart-tip-row .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.chart-tip-total {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+}

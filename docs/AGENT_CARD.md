@@ -49,7 +49,7 @@ Users control all features — they choose when to simplify, which reading level
 
 ## Data & Privacy
 
-User preferences are stored locally via `chrome.storage`. Page content is sent to the server for AI processing but is not persisted. No user accounts or personal data are collected. The planned context agent will use a locally generated UUID paired with server-side preference storage — no PII required.
+User preferences are stored locally via `chrome.storage`. Page content is sent to the server for AI processing but is not persisted (except inside a feedback report the user chooses to send). No user accounts or personal data are collected. Behavioural signals used for adaptive reading level stay on the user's device. Each browser carries a locally generated random UUID, sent with every request so the server can count how many browsers were active on each day; the server stores only that (browser ID, date) pair, never what was read or when.
 
 ## Demo
 

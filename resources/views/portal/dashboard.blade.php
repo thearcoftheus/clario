@@ -98,7 +98,57 @@
         </p>
     </div>
 
-    {{-- ---------------- 2. Feedback ---------------- --}}
+    {{-- ---------------- 2. Installs (how many browsers) ---------------- --}}
+    <h2 id="installs">Installs</h2>
+    <p class="small muted" style="margin-top:-6px">
+        Browsers with Clario installed, counted by an anonymous per-browser ID. A browser, not a person:
+        one person on two computers counts twice, and a reinstall counts as new.
+    </p>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="value">{{ number_format($installTotal) }}</div>
+            <div class="label">Unique installs, all time</div>
+        </div>
+        <div class="stat">
+            <div class="value">{{ number_format($installThisWeek['active']) }}</div>
+            <div class="label">Active this week</div>
+            <div class="label small">since Monday</div>
+        </div>
+        <div class="stat">
+            <div class="value">{{ number_format($installThisWeek['new']) }}</div>
+            <div class="label">New this week</div>
+            <div class="label small">first seen since Monday</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            <h3>Active installs per {{ $installPeriod }}</h3>
+            <nav class="segmented" aria-label="Period">
+                @foreach (\App\Portal\InstallStats::PERIODS as $p)
+                    <a href="{{ route('portal.dashboard', ['period' => $p]) }}#installs"
+                       @if ($p === $installPeriod) aria-current="true" @endif>{{ ucfirst($p) }}</a>
+                @endforeach
+            </nav>
+        </div>
+        @include('portal.partials.bar-chart', [
+            'days' => array_column($installSeries['buckets'], 'start'),
+            'series' => [
+                ['label' => 'New', 'values' => array_column($installSeries['buckets'], 'new'), 'color' => '#5c2b85'],
+                ['label' => 'Returning', 'values' => array_column($installSeries['buckets'], 'returning'), 'color' => '#8b5fbf'],
+            ],
+            'labels' => array_map(fn($b) => $b['label'] . ($b['current'] ? ' (so far)' : ''), $installSeries['buckets']),
+            'caption' => 'Active installs per ' . $installPeriod . ', split into new and returning browsers.',
+        ])
+
+        <p class="small muted" style="margin-bottom:0">
+            Requests from extension versions before 0.8.0 carried no browser ID and are not counted here,
+            so the first weeks after that release show everyone as new.
+        </p>
+    </div>
+
+    {{-- ---------------- 3. Feedback ---------------- --}}
     <h2>Feedback</h2>
 
     <div class="stats">
@@ -250,7 +300,7 @@
         @endif
     </div>
 
-    {{-- ---------------- 3. API metrics (what it costs) ---------------- --}}
+    {{-- ---------------- 4. API metrics (what it costs) ---------------- --}}
     <h2>API metrics</h2>
     <p class="small muted" style="margin-top:-6px">
         Calls Clario made out to paid providers. Counted only on a cache miss, so this tracks spend —

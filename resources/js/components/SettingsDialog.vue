@@ -137,6 +137,10 @@
                         Clario keeps private notes on this device about how you use it, to make Clario work better
                         for you. These notes stay on your device and are never shared with anyone else.
                     </p>
+                    <p class="mb-3 text-sm leading-snug text-black">
+                        Clario also gives this browser a random ID number, so we can count how many people use
+                        Clario. The number is not linked to your name, your email, or the pages you read.
+                    </p>
                     <button
                         type="button"
                         class="cursor-pointer rounded-md border border-purple bg-sidebar-bg px-3 py-3 text-sm font-bold text-black transition-colors hover:bg-purple-light"

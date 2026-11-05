@@ -1,4 +1,5 @@
 import { configureAxios } from '@/helpers/apiConfig';
+import { getBrowserId } from '@/helpers/browserId';
 import chromeMessage from '@/helpers/chromeMessage';
 import getOverview from '@/helpers/getOverview';
 import { getReadability } from '@/helpers/getReadability';
@@ -10,6 +11,15 @@ import { ChromeMessage, CmOverviewError, CmOverviewResponse } from '@/types/mess
 configureAxios();
 
 initCsrf();
+
+// Make sure this browser has its anonymous ID before any panel opens. The
+// `onInstalled` listener covers a fresh install AND an existing install
+// updating to a version that sends the ID (reason: 'update'); the bare call
+// below covers a service worker that wakes up for any other reason.
+chrome.runtime.onInstalled.addListener(() => {
+    void getBrowserId();
+});
+void getBrowserId();
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 

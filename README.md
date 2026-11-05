@@ -187,6 +187,16 @@ The extension will include the API key, and the server will validate it on every
 
 **Note**: For local development, you can leave both `CLARIO_API_KEY` and `VITE_API_KEY` empty - the server will skip authentication if no key is configured.
 
+## Privacy
+
+Clario is built for a privacy-sensitive community, so the server is given as little as possible.
+
+**The browser ID.** The first time Clario runs in a browser it makes up a random ID (a UUID) and keeps it in the extension's own storage on that computer. It is not derived from anything about the person, their machine, or their browser, and it is never synced to a Google account. It resets if Clario is uninstalled or its data is cleared. One person using two computers has two IDs; a shared computer has one.
+
+**What it is used for.** The ID is sent with every request to the Clario server, which records only *which days* that ID was active. That is how the team counts how many browsers are using Clario and whether they come back. The same ID is attached to feedback reports sent with the "Give feedback" button, so several reports from one browser can be seen as related.
+
+**What is not stored against it.** No page URLs, page text, reading level, pane, time of day, IP address, name or email. The server's request log and cost counters hold no browser ID at all. Clario's notes about reading behaviour (used for adaptive reading level) never leave the user's device.
+
 ## Troubleshooting
 
 ### Wrong Node version

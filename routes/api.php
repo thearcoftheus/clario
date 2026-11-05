@@ -4,6 +4,7 @@ use App\Http\Controllers\AiController;
 use App\Http\Controllers\AvatarController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Middleware\LimitRequestSize;
+use App\Http\Middleware\RecordInstallActivity;
 use App\Http\Middleware\TrackApiMetrics;
 use App\Http\Middleware\ValidateApiKey;
 use Illuminate\Http\Request;
@@ -13,8 +14,10 @@ Route::get('/user', function(Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// All Clario API routes require API key authentication
-Route::middleware([ValidateApiKey::class, TrackApiMetrics::class])->group(function () {
+// All Clario API routes require API key authentication. Every request is
+// logged to api_metrics (no identifier) and marks the sending browser as
+// active today in install_activity (identifier + date, nothing else).
+Route::middleware([ValidateApiKey::class, TrackApiMetrics::class, RecordInstallActivity::class])->group(function () {
     Route::post('/readability', [AiController::class, 'readability'])->name('readability');
     Route::post('/overview', [AiController::class, 'overview'])->name('overview');
     Route::post('/headline', [AiController::class, 'headline'])->name('headline');

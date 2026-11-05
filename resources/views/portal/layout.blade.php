@@ -7,6 +7,8 @@
     {{-- Static stylesheet, not a Vite asset: the Vite pipeline builds the
          Chrome extension and has no web entry point. See public/portal.css. --}}
     <link rel="stylesheet" href="{{ asset('portal.css') }}?v={{ filemtime(public_path('portal.css')) }}">
+    {{-- Chart hover tooltips. Also static; the page works without it. --}}
+    <script src="{{ asset('portal.js') }}?v={{ filemtime(public_path('portal.js')) }}" defer></script>
 </head>
 <body>
     @auth
