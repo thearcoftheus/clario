@@ -158,7 +158,8 @@ import route from '@/helpers/route';
 import { useAvatarStore, type Timepoint } from '@/stores/avatarStore';
 import { useHistoryStore } from '@/stores/historyStore';
 import { isAbortError } from '@/helpers/isAbortError';
-import { SimliClient, generateSimliSessionToken, generateIceServers } from 'simli-client';
+import { SimliClient } from 'simli-client';
+import axios from 'axios';
 import { Loader2, Pause, Play } from 'lucide-vue-next';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -171,9 +172,8 @@ const { currentItem } = storeToRefs(historyStore);
 const avatarStore = useAvatarStore();
 const { scriptStatus, scriptText } = storeToRefs(avatarStore);
 
-// Simli state
-const SIMLI_FACE_ID = '6ebf0aa7-6fed-443d-a4c6-fd1e3080b215';
-const SIMLI_API_KEY = import.meta.env.VITE_SIMLI_API_KEY;
+// Simli state. The face ID and the API key live on the server: the session
+// route mints the token for us, so neither is baked into the extension.
 
 const videoRef = ref<HTMLVideoElement | null>(null);
 const audioRef = ref<HTMLAudioElement | null>(null);
@@ -359,27 +359,43 @@ async function fetchCartesiaSSE(text: string, signal: AbortSignal): Promise<Uint
     return combined;
 }
 
+interface SimliSession {
+    session_token: string;
+    ice_servers: RTCIceServer[];
+}
+
+/**
+ * Ask the server for a Simli session. A failure here is almost always the
+ * server's Simli key (missing, expired, cycled) or Simli being down, neither
+ * of which the reader can do anything about, so the message stays generic.
+ */
+async function requestSimliSession(): Promise<SimliSession> {
+    try {
+        const { data } = await axios.post<SimliSession>(route('avatar.simli.session'));
+        return data;
+    } catch (error) {
+        if (isAbortError(error)) throw error;
+        console.error('[Watch] Simli session request failed:', error);
+        throw new Error('The video service is not available right now');
+    }
+}
+
 /**
  * Open the Simli WebRTC connection (token + ICE + start). Runs independently
  * of the Cartesia fetch so the two waits overlap.
+ *
+ * The token and ICE list come from our own server (POST /api/avatar/simli/session),
+ * which holds the Simli key. Before 0.8.1 the key was baked into the build and
+ * the library's generateSimliSessionToken() was called from here directly.
  */
 async function setupSimli(): Promise<SimliClient> {
-    const tokenResponse = await generateSimliSessionToken({
-        config: {
-            faceId: SIMLI_FACE_ID,
-            handleSilence: true,
-            maxSessionLength: 3600,
-            maxIdleTime: 30,
-        },
-        apiKey: SIMLI_API_KEY,
-    });
-    const iceServers = await generateIceServers(SIMLI_API_KEY);
+    const session = await requestSimliSession();
 
     const client = new SimliClient(
-        tokenResponse.session_token,
+        session.session_token,
         videoRef.value!,
         audioRef.value!,
-        iceServers,
+        session.ice_servers,
     );
 
     // A client that has been stopped and replaced (tab switch, Stop, a new

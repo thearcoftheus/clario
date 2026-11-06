@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\RecordInstallActivity;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -45,6 +46,18 @@ class AppServiceProvider extends ServiceProvider
                 : 'ip:' . $request->ip();
 
             return Limit::perHour(20)->by($key);
+        });
+
+        // Simli sessions. Each one is a billable video stream, so cap how
+        // many a single browser can open; keyed on the browser-id header
+        // (every build that calls this route sends it), IP as a fallback.
+        RateLimiter::for('simli-sessions', function (Request $request) {
+            $browserId = $request->header(RecordInstallActivity::HEADER);
+            $key = is_string($browserId) && $browserId !== ''
+                ? 'browser:' . sha1($browserId)
+                : 'ip:' . $request->ip();
+
+            return Limit::perHour(30)->by($key);
         });
 
         // Portal login. Keyed on email + IP so one person fat-fingering their

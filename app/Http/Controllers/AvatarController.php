@@ -399,6 +399,108 @@ class AvatarController extends Controller
     }
 
     /**
+     * Simli session endpoints. The library's generateSimliSessionToken() and
+     * generateIceServers() call these directly from the browser with the raw
+     * API key; simliSession() below does the same two calls server-side so
+     * the key never ships inside the extension.
+     */
+    private const SIMLI_TOKEN_URL = 'https://api.simli.ai/compose/token';
+    private const SIMLI_ICE_URL = 'https://api.simli.ai/compose/ice';
+
+    /**
+     * What the browser falls back to when Simli's ICE endpoint is unavailable —
+     * the same fallback the simli-client library uses itself.
+     */
+    private const FALLBACK_ICE_SERVERS = [
+        ['urls' => ['stun:stun.l.google.com:19302']],
+    ];
+
+    /**
+     * Mint a Simli session for the Watch pane.
+     *
+     * Returns a short-lived session token plus the ICE server list, which is
+     * everything the SimliClient constructor needs; the WebRTC stream itself
+     * goes browser ↔ Simli. The API key stays in .env: before 0.8.1 it was
+     * baked into the extension, so cycling it meant a rebuild and a
+     * redistribution to every chapter, and anyone who unzipped the build
+     * could read it and bill the Simli account directly.
+     *
+     * The face is fixed server-side (config/services.php) so a caller with
+     * the Clario API key can only ever start the Clario avatar.
+     */
+    public function simliSession(Request $request)
+    {
+        $simliApiKey = config('services.simli.api_key');
+
+        if (!$simliApiKey) {
+            return response()->json(['error' => 'Simli API key not configured'], 500);
+        }
+
+        $headers = [
+            'x-simli-api-key' => $simliApiKey,
+            'Content-Type' => 'application/json',
+        ];
+
+        try {
+            $tokenResponse = Http::withHeaders($headers)->timeout(15)->post(self::SIMLI_TOKEN_URL, [
+                'faceId' => config('services.simli.face_id'),
+                'handleSilence' => true,
+                'maxSessionLength' => 3600,
+                'maxIdleTime' => 30,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Simli token request failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Could not reach the video service'], 502);
+        }
+
+        $sessionToken = $tokenResponse->json('session_token');
+
+        if (!$tokenResponse->successful() || !is_string($sessionToken) || $sessionToken === '') {
+            // Simli's body can name the key's status ("invalid api key"); it
+            // belongs in the log, not in a response shown to a reader.
+            Log::error('Simli token error', [
+                'status' => $tokenResponse->status(),
+                'body' => $tokenResponse->body(),
+            ]);
+            return response()->json(['error' => 'Could not start the video service'], 502);
+        }
+
+        // A session is a billable Simli stream, so it counts as one provider
+        // call. Before this route existed the live Watch path bumped nothing.
+        ApiCallCount::bump(ApiCallCount::SERVICE_VIDEO_STREAM);
+
+        return response()->json([
+            'session_token' => $sessionToken,
+            'ice_servers' => $this->simliIceServers($headers),
+        ]);
+    }
+
+    /**
+     * Simli's ICE list, or the public STUN fallback if that call fails for any
+     * reason. A missing TURN entry degrades to "may not connect on a strict
+     * network", which is better than failing a session we already paid for.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function simliIceServers(array $headers): array
+    {
+        try {
+            $response = Http::withHeaders($headers)->timeout(10)->get(self::SIMLI_ICE_URL);
+            $servers = $response->json();
+
+            if ($response->successful() && is_array($servers) && $servers !== []) {
+                return array_values($servers);
+            }
+
+            Log::warning('Simli ICE request returned nothing usable', ['status' => $response->status()]);
+        } catch (\Throwable $e) {
+            Log::warning('Simli ICE request failed', ['error' => $e->getMessage()]);
+        }
+
+        return self::FALLBACK_ICE_SERVERS;
+    }
+
+    /**
      * Generate video using Simli + Cartesia
      * 1. Generate audio from text using Cartesia TTS
      * 2. Send audio to Simli to generate lip-synced video

@@ -98,7 +98,7 @@
 <script lang="ts" setup>
 import { Button } from '@/components/ui/button';
 import route from '@/helpers/route';
-import { SimliClient, generateSimliSessionToken, generateIceServers } from 'simli-client';
+import { SimliClient } from 'simli-client';
 import axios from 'axios';
 import { AlertCircle, Loader2, Play, Square, User } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
@@ -107,9 +107,9 @@ const props = defineProps<{
     scriptText: string;
 }>();
 
-// Simli face ID for Ong avatar
-const SIMLI_FACE_ID = '6ebf0aa7-6fed-443d-a4c6-fd1e3080b215';
-const SIMLI_API_KEY = import.meta.env.VITE_SIMLI_API_KEY;
+// The face ID and API key live on the server; POST /api/avatar/simli/session
+// mints the token. (This component is orphaned — WatchPane.vue is the live
+// Watch pane — but it is kept compiling and key-free.)
 
 // Refs for video/audio elements
 const videoRef = ref<HTMLVideoElement | null>(null);
@@ -157,28 +157,17 @@ async function startStream() {
         status.value = 'connecting';
         console.log('[Simli] Generating session token...');
 
-        // Generate session token
-        const sessionConfig = {
-            faceId: SIMLI_FACE_ID,
-            handleSilence: true,
-            maxSessionLength: 300, // 5 minutes max
-            maxIdleTime: 30,
-        };
-
-        const tokenResponse = await generateSimliSessionToken({
-            config: sessionConfig,
-            apiKey: SIMLI_API_KEY,
-        });
-
-        console.log('[Simli] Session token generated');
-
-        // Get ICE servers
-        const iceServers = await generateIceServers(SIMLI_API_KEY);
-        console.log('[Simli] ICE servers obtained');
+        // The server mints the session token and fetches the ICE servers
+        // with its own Simli key.
+        const { data: session } = await axios.post<{ session_token: string; ice_servers: RTCIceServer[] }>(
+            route('avatar.simli.session'),
+        );
+        const iceServers = session.ice_servers;
+        console.log('[Simli] Session token and ICE servers obtained');
 
         // Create Simli client
         simliClient = new SimliClient(
-            tokenResponse.session_token,
+            session.session_token,
             videoRef.value,
             audioRef.value,
             iceServers

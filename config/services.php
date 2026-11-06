@@ -49,6 +49,9 @@ return [
 
     'simli' => [
         'api_key' => env('SIMLI_API_KEY'),
+        // The avatar the Watch pane shows. Fixed server-side so the session
+        // route can only ever start this face, whoever calls it.
+        'face_id' => env('SIMLI_FACE_ID', '6ebf0aa7-6fed-443d-a4c6-fd1e3080b215'),
     ],
 
 ];

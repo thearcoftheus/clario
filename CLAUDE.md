@@ -20,7 +20,7 @@ PATH="/Users/benfreda/.nvm/versions/node/v20.9.0/bin:$PATH" npm run build
 
 ### Development
 ```bash
-composer dev              # Start all services (Laravel server, queue, logs). Needs Node 20 on PATH (see above) — npx runs concurrently. There is no Vite dev server; the extension is always built statically via npm run build.
+composer dev              # Start all services (Laravel server, queue, logs). Needs Node 20 on PATH (see above) — npx runs concurrently. Runs `artisan serve` with PHP_CLI_SERVER_WORKERS=4 and `--no-reload` (Laravel silently ignores the worker count without that flag; the cost is that the server no longer restarts itself when `.env` changes): the built-in PHP server is single-threaded by default, and the Watch pane holds one worker open for the Cartesia SSE stream while it asks the same server for a Simli session, so with one worker the session request waits for the whole stream and "Generating speech" hangs for minutes. Production (php-fpm) is unaffected. There is no Vite dev server; the extension is always built statically via npm run build.
 npm run build             # Build Chrome extension (generates ziggy routes + 3 vite builds)
 npm run build:production  # Production build (requires VITE_API_URL set or --url flag)
 ```
@@ -78,6 +78,7 @@ All routes require API key authentication via `ValidateApiKey` middleware:
 - `POST /api/narrate-sync` - Text-to-speech with word-level timepoints for synchronized highlighting (JSON response)
 - `POST /api/avatar/script` - Prepare the easy-read summary as a TTS-friendly script (markdown stripped, no preamble)
 - `POST /api/avatar/cartesia/tts` - Generate PCM16 audio from text via Cartesia TTS (streamed to Simli)
+- `POST /api/avatar/simli/session` - Mint a Simli session token + ICE server list with the server-side key (the Watch pane's WebRTC handshake; throttled 30/hour per browser via `simli-sessions`)
 - `POST /api/avatar/simli/generate` - End-to-end Simli + Cartesia video generation (unused by current frontend; kept available)
 
 ### UI Components
@@ -88,6 +89,7 @@ Uses shadcn-vue style components in `resources/js/components/ui/`. Built with re
 Key variables for the extension build:
 - `VITE_API_URL` - Backend server URL (localhost for dev, production URL for deployment)
 - `VITE_API_KEY` - API key baked into extension (matches `CLARIO_API_KEY` on server)
+- `VITE_SIMLI_API_KEY` - **No longer read** (since 0.8.1). Up to 0.8.0 the Watch pane called Simli straight from the browser with this key baked in, so cycling it meant a rebuild and a redistribution to every chapter, and anyone who unzipped the build could read it. Now `POST /api/avatar/simli/session` mints the token server-side with `SIMLI_API_KEY`; cycling the key is an `.env` edit on the box plus `php artisan config:clear`. Delete the variable from local `.env` files. If a new `VITE_*` secret is ever tempting, it isn't a secret once built.
 
 ## Side panel tab model (multi-tab)
 
@@ -186,7 +188,7 @@ Design spec: `~/Downloads/clario-feedback-mechanism-build-spec.md` (not in the r
 
 ## Provider usage counters
 
-`api_call_counts` — a daily tally of **outbound** calls to paid providers, for cost visibility. One row per `(day, service)`, incremented via `ApiCallCount::bump()` at the six real provider call sites (`AiController` translate/headline/chat, `NarrationService` ×2, `AvatarController` Cartesia + Simli). **Bump only on a cache miss**, or the numbers stop tracking spend.
+`api_call_counts` — a daily tally of **outbound** calls to paid providers, for cost visibility. One row per `(day, service)`, incremented via `ApiCallCount::bump()` at the real provider call sites (`AiController` translate/headline/chat, `NarrationService` ×2, `AvatarController` Cartesia TTS, `simliSession` for the live Watch path, and `simliGenerate` for the unused end-to-end route). `video_stream` was always zero before 0.8.1 because the browser opened Simli sessions itself. **Bump only on a cache miss**, or the numbers stop tracking spend.
 
 Aggregation-only by design: no timestamps, no `browser_id`, no content — a daily count can't say anything about an individual, which keeps the "behavioral data stays on your machine" story intact. Distinct from `api_metrics`, which the `TrackApiMetrics` middleware fills with *inbound* requests; the two differ wherever a cached response means no provider call happened.
 
@@ -239,6 +241,7 @@ Small authenticated Blade app for the team to review feedback and watch usage. v
   - Web server must not buffer SSE responses. The `/api/avatar/cartesia/tts` endpoint returns `text/event-stream` and sets `X-Accel-Buffering: no` (defeats nginx buffering) plus `Content-Encoding: identity` (defeats gzip middleware). Verify nothing in the stack overrides those headers — the streaming latency win for the Watch pane depends on bytes arriving incrementally.
   - PHP `output_buffering` should be `Off` or low (`4096`); the controller calls `ob_end_clean()` inside the response closure so even non-zero values are usually safe.
 - **After deploying new backend code:** `php artisan optimize:clear && php artisan route:cache`, then reload PHP-FPM if applicable (Cloudways handles this via its dashboard).
+- **Cycling a provider key** (Gemini, Google TTS, Cartesia, Simli): edit `.env` in `~/public_html` on the box, then `php artisan config:clear`. No rebuild: since 0.8.1 none of these keys is in the extension. The one baked-in secret is `VITE_API_KEY` (= `CLARIO_API_KEY`), which only gates Clario's own metered endpoints; changing it does require a rebuild and redistribution.
 - **Cron (required for cache pruning):** the Laravel scheduler needs one entry in the Cloudways cron job manager (Application → Cron Job Management → Advanced): `* * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1`. Without it `clario:prune-audio-cache` never runs and the TTS caches grow forever. Verify with `php artisan schedule:list` on the box.
 - **Feedback reports + portal (first deploy only):**
   - `php artisan migrate` — creates `feedback_reports`, `api_call_counts` and `install_activity`.
@@ -253,5 +256,5 @@ Small authenticated Blade app for the team to review feedback and watch usage. v
 Backend AI/TTS keys:
 - `GEMINI_API_KEY` - For AI agents via Prism
 - `GOOGLE_APPLICATION_CREDENTIALS` - For Cloud Text-to-Speech
-- `SIMLI_API_KEY` - For Simli lip-sync video generation
+- `SIMLI_API_KEY` - For Simli lip-sync video generation (session minting; the browser never sees it). `SIMLI_FACE_ID` optionally overrides the avatar face, default in `config/services.php`.
 - `CARTESIA_API_KEY` - For Cartesia text-to-speech (drives Simli audio)

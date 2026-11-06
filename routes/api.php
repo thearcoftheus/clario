@@ -29,6 +29,11 @@ Route::middleware([ValidateApiKey::class, TrackApiMetrics::class, RecordInstallA
     // Avatar video generation (Simli + Cartesia)
     Route::post('/avatar/script', [AvatarController::class, 'prepareScript'])->name('avatar.script');
     Route::post('/avatar/simli/generate', [AvatarController::class, 'simliGenerate'])->name('avatar.simli.generate');
+    // Mints the Simli session token + ICE servers with the server-side key.
+    // Throttled per browser: each call is a billable Simli stream.
+    Route::post('/avatar/simli/session', [AvatarController::class, 'simliSession'])
+        ->middleware('throttle:simli-sessions')
+        ->name('avatar.simli.session');
     Route::post('/avatar/cartesia/tts', [AvatarController::class, 'cartesiaTTS'])->name('avatar.cartesia.tts');
 
     // User-initiated feedback reports from the extension's "Give feedback"
